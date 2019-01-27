@@ -20,8 +20,10 @@ hemisphere onehot
 albedo
 
 convolutions of surrouning area such as
+
   NS and EW slope
+  
   STD of elevation
 
 
-The ultimate goal of this project is a validated differentiable function that can be used to determine climate sensitivity to greenhouse gas warming.
+The  goal of this project is a validated differentiable function that can be used to determine climate sensitivity to greenhouse gas warming.
