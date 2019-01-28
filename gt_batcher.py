@@ -12,9 +12,9 @@ read geotiff files and generate a batch of examples
 """
 
 feat_list = ['long','lati','vis_down','vis_dstd','toa_pwr','elev','elev_std','zels','gtzels',\
-             'ltzls','sh1h','nh1h']
+             'ltzls','sh1h','nh1h', 'pwr_ratio', 'barr_press']
 feat_list_width = len(feat_list)
-feat_norms = [1.0, 1.0, 310.0, 30.0, 415.0, 7000.0, 1000.0, 40.0, 400.0, 400.0, 1.0, 1.0]
+feat_norms = [1.0, 1.0, 310.0, 30.0, 415.0, 7000.0, 1000.0, 40.0, 400.0, 400.0, 1.0, 1.0, 1.0, 760.0]
 
 
 elds = rio.open('ELE.tif')
@@ -83,7 +83,8 @@ def bld_eu_examp(ptix, bTrain): #an example in eng units
   gtzs = (el > 0.0).sum()
   ltzs = (el < 0.0).sum()
   zs = (el == 0.0).sum()
-  ins = [lon, lat, vis_down, vis_dstd, toa_pwr, elev, elev_std, zs, gtzs, ltzs]
+  pwr_ratio = vis_down / toa_pwr
+  ins = [lon, lat, vis_down, vis_dstd, toa_pwr, elev, elev_std, zs, gtzs, ltzs, pwr_ratio]
   #print(gtzs,ltzs, zs)
   #pdb.set_trace()
   if elev < -100:
