@@ -51,7 +51,7 @@ class ClimaModel:
       self.learning_rate = tf.train.exponential_decay(start_learnrate, global_step, 300000, 0.9, staircase=True)
       optimizer = tf.train.AdamOptimizer(self.learning_rate)
       #optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
-      self.ts = optimizer.minimize(self.wtd_loss, global_step=global_step)
+      self.ts = optimizer.minimize(self.loss, global_step=global_step)
     else:
       self.ts = None
     #pdb.set_trace()
@@ -124,7 +124,7 @@ class ClimaModel:
   def restore(self, path):
     self.save.restore(self.sess, path)
 
-class stupidModel():
+class artisanalModel():
   def __init__(self, sess, params, bTrain=True):
     self.batch_size = params['batch_size']
     self.params = params
@@ -133,12 +133,13 @@ class stupidModel():
     self.elev = tf.placeholder(tf.float32, (None), name='elev')
     self.toap  = tf.placeholder(tf.float32, (None), name='toap_ratio')
     self.y_true = tf.placeholder(tf.float32, (None), name='y_true')
-    psens = tf.get_variable('psens', None, tf.float32,tf.random_normal([1],mean=0.205, stddev=0.00001))
+    psens = tf.get_variable('psens', None, tf.float32,tf.random_normal([1],mean=0.25, stddev=0.00001))
     esens = tf.get_variable('esens', None, tf.float32,tf.random_normal([1],mean=-0.0064, stddev=0.0000001))
-    toasens = tf.get_variable('toasens', None, tf.float32,tf.random_normal([1],mean=0.005, stddev=0.0000001))
+    toasens = tf.get_variable('toasens', None, tf.float32,tf.random_normal([1],mean=-0.2, stddev=0.0000001))
     smb =  tf.get_variable('smbias', None, tf.float32,tf.random_normal([1],mean=-23.6, stddev=0.01))
     self.hp = tf.add(tf.multiply(self.pwr, psens),smb)
-    self.tp = tf.multiply(self.toap, toasens)
+    self.ratio = tf.divide(self.pwr, self.toap)
+    self.tp = tf.multiply(self.ratio, toasens)
     self.htp = tf.add(self.hp, self.tp)
     self.h = tf.add(tf.multiply(self.elev, esens),self.htp)
     self.loss = tf.square(self.y_true - self.h)
@@ -146,7 +147,7 @@ class stupidModel():
     self.psens = psens; self.esens = esens; self.toasens = toasens; self.smb = smb;
     if bTrain:
       global_step = tf.Variable(0, trainable=False)
-      start_learnrate = 0.005 #params['learn_rate']                          
+      start_learnrate = 0.05 #params['learn_rate']                          
       self.learning_rate = tf.train.exponential_decay(start_learnrate, global_step, 300000, 0.9, staircase=True)
       optimizer = tf.train.AdamOptimizer(self.learning_rate)
       #optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)

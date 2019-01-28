@@ -70,20 +70,24 @@ def load_winlist(path):
     dc = pickle.load(fi)
   return dc['windows'], dc['res'], dc['ct']
 
-#ws = build_winlist(60, 55, 120, 16, 4)
-#ws, res, ct = load_winlist('winlist.pkl')
-#print(res, ct)
-#pdb.set_trace()
+#barometric pressure in torr (mmHg) by altitude
+def bp_byalt(alt):
+  alt = max(0, alt)
+  return 760 *(1.0/(2.0**(alt/5400.0)))
 
+
+
+#deprecate and use rasterio xy()
 def llscale(lax, lox, res, startLat):
   res = float(res)
   lat = startLat - (float(lax)/res)
   lon = -180.0 + float(lox)/res
   return lat, lon
 
+#deprecate and use raserio index()
 def invllscale(lat, lon, res, startLat):
   lax = int((startLat - lat)* res)
-  lox = int((lon*res)-180.0)
+  lox = int((lon+180.0)*res)
   return lax, lox
 
 def arprint(inp):
@@ -92,5 +96,12 @@ def arprint(inp):
     ostr += str(round(inp[ix], 1))
     ostr += "  "
   print ostr[0:-2]  
-  return ostr[0:-2]              
-  
+  return ostr[0:-2]
+
+mon_wts = [31.0, 28.25, 31.0, 30.0, 31.0, 30.0, 31.0, 31.0, 30.0, 31.0, 30.0, 31.0]
+def acc12mo_avg(vals):
+  wtd_sum = 0.0
+  for mx in range(12):
+    wtd_sum += (mon_wts[mx] * vals[mx])
+  wtd_avg = wtd_sum/365.25
+  return wtd_avg
