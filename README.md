@@ -1,6 +1,6 @@
 Using geotiff data to model climate with machine learning.
 
-A tensorflow model is trained using climate data. The learned function predicts
+Tensorflow models are trained using climate data. The learned functions predict
 average temperature at any location as a function of:
 
 * vis radiation down
