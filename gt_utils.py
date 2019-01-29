@@ -1,9 +1,12 @@
 import numpy as np
 import time
+import datetime
 import rasterio as rio
 import matplotlib as plt
 import pickle
 import pdb
+import math
+
 
 """
 utilites for geotiff files
@@ -75,8 +78,37 @@ def bp_byalt(alt):
   alt = max(0, alt)
   return 760 *(1.0/(2.0**(alt/5400.0)))
 
+def Fp_on_first(mx, lat):
+  st = datetime.datetime(2019, 1, 1, 0)
+  day_hrs = []; Fps = []
+  for hr in range(0,24):
+    day_hrs.append((datetime.datetime(2019, mx, 1, hr,) \
+                   - st).total_seconds()/3600)
+    Fps.append(Fp(day_hrs[hr], lat))
+  return day_hrs, Fps
+    
+def Fp(t, lat):
+  theta = lat*3.14159/180.0
+  delta = 23*3.15159/180.0
+  _c = math.cos
+  _s = math.sin
+  _W = 2*3.14/(365.25*24)
+  _w = 2*3.14159/(24.0+(4.0/(24.0*3600.0)))
+  f1 = _c(_W*t) * _c(theta) * _c(_w*t)
+  f2 = _c(delta) * _c(theta) * _s(_w*t)
+  f3 = _s(delta) * _s(theta)
+  f4 = _s(_W*t)
+  _Fp = round(max( 0.0, (f1 + (f4* (f2 + f3)))),3)
+  return _Fp
+  
 
 
+dhs, fps = Fp_on_first(1, 45)
+print(fps)
+dhs, fps = Fp_on_first(4, 45)
+print(fps)
+pdb.set_trace()
+                  
 #deprecate and use rasterio xy()
 def llscale(lax, lox, res, startLat):
   res = float(res)

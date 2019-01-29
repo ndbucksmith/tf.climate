@@ -181,11 +181,12 @@ class artisanalModel():
 class climaRNN():
   def __init__(self, params)
   self.cell_size = params['cell_size']
-  xin_size = params['xin_size'];self.xin_size = xin_size 
+  xin_size = params['rxin_size']; self.xin_size = xin_size 
   self.cell_fw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size) 
   self.cell_bw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size)
   self.xin = tf.placeholder(tf.float32, (None, 12,  xin_size), name='xin')
-  clima_rnn = tf.nn.bidirectional_dynamic_rnn(self.cell_fw, self.cell_bw, xin)
+  outs, outstates = tf.nn.bidirectional_dynamic_rnn(self.cell_fw, self.cell_bw, xin)
   #default is both states (fw and bw) init to zeros
+  pdb.set_trace()
   rnn_wy1 = tf.get_variable('wy', None, tf.float32, tf.random_normal([f_width, y_size], stddev=istd))
   rnn_by1 = tf.get_variable('by', None, tf.float32, tf.random_normal([y_size], stddev=0.01))

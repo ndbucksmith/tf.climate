@@ -94,10 +94,15 @@ def get_windset(lax, lox, _unit):
   return  wnd, wcwnd, lcwnd
 
 def wd_filteredstats(wd, nodat):
-  ndct = (wd == nodat).sum()
-  dct = (wd != nodat).sum()
   wdclean = wd
-  wdclean[wdclean == nodat] = 0
+  if nodat < -3.0e+36:
+    ndct = (wd < -3.0e+36).sum()
+    dct = (wd > -3.0e+36).sum()
+    wdclean[wdclean < -3.0e+36] = 0.0    
+  else:  
+    ndct = (wd == nodat).sum()
+    dct = (wd != nodat).sum() 
+    wdclean[wdclean == nodat] = 0
   if dct > 0:
     wdmean = wdclean.sum()/dct
   else:
@@ -115,7 +120,7 @@ def lc_histo(lc):
     land = float(histo[0][1])/recct
     water = float(histo[0][2])/recct
     ice = float(histo[0][3])/recct
-    assert land + water + ice == 1.0
+    assert abs(land + water + ice - 1.0) < 0.01
     return land, water, ice                     
 
 
@@ -218,7 +223,7 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
   if wc_prec < 0   or wc_prec > 600:  ex_good =False;  blog('bad wc_prec:', lat, lon, prec)
   wc_srad = gtu.acc12mo_avg(srad_12mo)
   if wc_srad< 0.0  or wc_srad > (600.0*85.0):  ex_good =False;  blog('bad wc_srad:', lat, lon, wc_srad)
-  gtu.arprint([lat, lon, temp, wc_temp, temp_12mo.min(), temp_12mo.max()])
+
   #pdb.set_trace()
   elev = np.nanmean(el)
   elev_std = np.nanstd(el)
@@ -237,6 +242,8 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
     sh1h = 0.0; nh1h = 1.0
   else:  
     sh1h = 1.0; nh1h = 0.0
+  gtu.arprint([lat, lon, temp, wc_temp, temp_12mo.min(), temp_12mo.max()])
+  print(ex_good)
   ins = [lon, lat, vis_down, toa_pwr, elev, barop, pwr_ratio, wc_prec, wc_srad, land, water, ice, \
          sh1h, nh1h, vis_dstd, elev_std, zs, gtzs, ltzs,]  
   return np.array(ins), temp, ex_good, rnn_seq, temp_12mo, wc_temp
@@ -247,6 +254,7 @@ def get_batch(size, bTrain):
   wc_trs=[]; rnn_trus = [];   
   for ix in range(size):
     b_g = False
+    print('bx',ix)
     while not b_g:
       ptix = np.random.randint(0,train_total)
       ins, temp, b_g, r_s, t_12, wc_t = bld_eu_examp(ptix, 20, bTrain)
@@ -259,5 +267,5 @@ def get_batch(size, bTrain):
 
 
 
-ins, gt_trues, r_sqs, wctrs, rnn_trus = get_batch(1004, True)
-pdb.set_trace()
+#ins, gt_trues, r_sqs, wctrs, rnn_trus = get_batch(1004, True)
+#pdb.set_trace()
