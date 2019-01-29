@@ -93,7 +93,7 @@ def invllscale(lat, lon, res, startLat):
 def arprint(inp):
   ostr = ""
   for ix in range(len(inp)):
-    ostr += str(round(inp[ix], 1))
+    ostr += str(round(inp[ix], 2))
     ostr += "  "
   print ostr[0:-2]  
   return ostr[0:-2]
