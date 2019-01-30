@@ -23,7 +23,14 @@ class latluts:
              362.3958333,391.7708333,409.375,414.5833333,411.0416667,395,
              366.9791667,331.9791667,287.9166667,241.6666667,206.25,176.1458333,
               140.7291667]
-
+mon_wts = [31.0, 28.25, 31.0, 30.0, 31.0, 30.0, 31.0, 31.0, 30.0, 31.0, 30.0, 31.0]
+def acc12mo_avg(vals):
+  wtd_sum = 0.0
+  for mx in range(12):
+    wtd_sum += (mon_wts[mx] * vals[mx])
+  wtd_avg = wtd_sum/365.25
+  return wtd_avg
+    
 def albbylat(lattitude):
     return np.interp(lattitude, latluts.lattitude, latluts.albedo)
 
@@ -33,7 +40,7 @@ def toaPower(lat):
   return P
 
 
-#deprecated
+#deprecated windows now built handled  in batcher using rasterio 
 def get_windims(hei, wid, nocols, norows):
   rw = wid/nocols
   ch = hei/norows
@@ -59,6 +66,15 @@ def build_winlist(NestLat,SestLat, res, nocols, hemirows):
                       rw, ch))
   return windows
 
+#print array with rounded values for easy compare
+def arprint(inp):
+  ostr = ""
+  for ix in range(len(inp)):
+    ostr += str(round(inp[ix], 2))
+    ostr += "  "
+  print ostr[0:-2]  
+  return ostr[0:-2]
+
 def save_winlist(wins, res, path):
   dc = {}
   dc['ct'] = len(wins)
@@ -78,36 +94,52 @@ def bp_byalt(alt):
   alt = max(0, alt)
   return 760 *(1.0/(2.0**(alt/5400.0)))
 
+#toa power factors for 24 hours
 def Fp_on_first(mx, lat):
-  st = datetime.datetime(2019, 1, 1, 0)
+  st = datetime.datetime(2018, 3, 21, 0)
   day_hrs = []; Fps = []
-  for hr in range(0,24):
+  for hr in range(24):
     day_hrs.append((datetime.datetime(2019, mx, 1, hr,) \
                    - st).total_seconds()/3600)
     Fps.append(Fp(day_hrs[hr], lat))
-  return day_hrs, Fps
-    
+  Fps = np.array(Fps)
+  return day_hrs, Fps, Fps.sum() * 1350/24.0
+
+#get the power factor as function of time lat and declination = 23
 def Fp(t, lat):
   theta = lat*3.14159/180.0
-  delta = 23*3.15159/180.0
+  delta = 23.0*3.14159/180.0
   _c = math.cos
   _s = math.sin
-  _W = 2*3.14/(365.25*24)
-  _w = 2*3.14159/(24.0+(4.0/(24.0*3600.0)))
+  _W = 2*3.14159/(365.24*24)
+  _w = 2*3.14159/(24.0+(4.0/3600.0))
   f1 = _c(_W*t) * _c(theta) * _c(_w*t)
   f2 = _c(delta) * _c(theta) * _s(_w*t)
   f3 = _s(delta) * _s(theta)
   f4 = _s(_W*t)
-  _Fp = round(max( 0.0, (f1 + (f4* (f2 + f3)))),3)
+  _Fp = max( 0.0, (f1 + (f4* (f2 + f3))))
   return _Fp
-  
 
+# get 12 month series of top of atmo power
+def toa_series(lat):
+  firsts = []; mos = [];
+  for mx in range(1,13):
+    dhs, fps, dayP = Fp_on_first(mx, lat)
+    firsts.append(dayP)    
+  for mx in range(12):
+    mos.append((firsts[mx]+firsts[(mx+1)%12])/2.0)
+  return mos
 
-dhs, fps = Fp_on_first(1, 45)
-print(fps)
-dhs, fps = Fp_on_first(4, 45)
-print(fps)
-pdb.set_trace()
+#compare monthlt power series to og lookup
+def toa_series_val():
+  for lat in range(-60, 70, 10):
+    lat = float(lat)  
+    toalut = toaPower(lat)
+    toaser = acc12mo_avg(toa_series(lat))
+    arprint([toalut, toaser])    
+
+#toa_series_val()    
+#pdb.set_trace()
                   
 #deprecate and use rasterio xy()
 def llscale(lax, lox, res, startLat):
@@ -122,18 +154,5 @@ def invllscale(lat, lon, res, startLat):
   lox = int((lon+180.0)*res)
   return lax, lox
 
-def arprint(inp):
-  ostr = ""
-  for ix in range(len(inp)):
-    ostr += str(round(inp[ix], 2))
-    ostr += "  "
-  print ostr[0:-2]  
-  return ostr[0:-2]
 
-mon_wts = [31.0, 28.25, 31.0, 30.0, 31.0, 30.0, 31.0, 31.0, 30.0, 31.0, 30.0, 31.0]
-def acc12mo_avg(vals):
-  wtd_sum = 0.0
-  for mx in range(12):
-    wtd_sum += (mon_wts[mx] * vals[mx])
-  wtd_avg = wtd_sum/365.25
-  return wtd_avg
+

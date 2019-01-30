@@ -23,11 +23,14 @@ lc legend 0 nota? 10 to 200 land, 210 water, 200 snow ice, 255 nodata?
 
 """
 
-feat_list = ['lon', 'lat', 'vis_down', 'toa_pwr', 'elev', 'barop', 'pwr_ratio', 'wc_prec', 'wc_srad', 'land', 'water', 'ice', \
+feat_list = ['lon', 'lat', 'vis_down', 'toa_pwr', 'elev', 'barop', 'pwr_ratio', 'wc_prec', 'wc_srad', \
+             'land', 'water', 'ice', \
              'sh1h', 'nh1h', 'vis_dstd', 'elev_std', 'zs', 'gtzs', 'ltzs']  
 feat_list_width = len(feat_list)
-feat_norms = [1.0, 1.0, 310.0,  415.0, 7000.0, 760.0, 200.0, 415, 1.0, 1.0, 1.0,  \
+feat_norms = [1.0, 1.0, 310.0,  415.0, 7000.0, 760.0, 1.0, 200.0, 500.0, \
+              1.0, 1.0, 1.0,  \
               1.0, 1.0, 50.0, 1000.0, 400.0, 400.0, 400.0]
+assert len(feat_norms) == feat_list_width
 
 def str2(mx):
   if mx < 9:
@@ -73,9 +76,9 @@ train_sums = np.array(train_sums)
 test_sums = np.array(test_sums)
 train_total = traincts.sum()
 test_total = testcts.sum()
-print(train_sums)
-print(train_total)
-
+#print(train_sums)
+print('total 20 klick squares for training:' + str(train_total))
+print('total 20 klick squares for test:' + str(test_total))
 
 #use index from global solar atlas, get coresponding windows into
 # g tifs with other coordinate systems
@@ -109,8 +112,8 @@ def wd_filteredstats(wd, nodat):
     wdmean  = nodat
   return wdmean
 
-def lc_histo(lc):
 #returns fraction of the area that is land, water, ice
+def lc_histo(lc):
   histo = np.histogram(lc, [0, 5, 205, 215, 225, 256])
   recct = float(lc.size -histo[0][0] - histo[0][4])
   #pdb.set_trace()
@@ -125,6 +128,8 @@ def lc_histo(lc):
 
 
 #maturn edinburgh  kuwait, ponca city, sydney, port au france
+# some of these locations have no data for some params,
+#get_batch(0 + build_eu_example() refect windows with no data or bad data
 def data_validation_test():
   pickpts = [[-63.18, 9.8],[-3.2, 55.5],[47.98, 29.5], [-97.1, 36.7], \
                 [151.2, -33.9], [70.25, -49.35], [0.0, 0.0]]
@@ -147,7 +152,12 @@ def data_validation_test():
     print('radiations')
     #pdb.set_trace()
     srad_months = np.array(srad_months)
-    print(gloSRAD, srad_months.mean(), srad_months.mean()/gloSRAD)
+    toa_months = gtu.toa_series( pickpts[ix][1])
+    sr12 = gtu.acc12mo_avg(srad_months)
+    sr_cal = sr12/gloSRAD
+    gtu.arprint([gloSRAD, sr12, sr_cal])
+    gtu.arprint(srad_months/sr_cal)
+    gtu.arprint(toa_months)
     prec_months = np.array(prec_months)
     print('precip', prec_months.mean())
     print(lc)
@@ -176,7 +186,8 @@ def get_example_index(wx, pickpt, bTrain):
   return windo, wlax, wlox, datact
 
 
-
+# build full example with yearly and monthy data
+# some qc checks are ugly but necessary
 def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
   ex_good = True
   wx, pickpt = get_windpt(ptix, train_sums)
@@ -205,12 +216,12 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
       if srad_12mo[mx] == 65535: ex_good = False; blog('bad srad', lat, lon);
       if prec_12mo[mx] == -32768: ex_good = False; blog('bad prec', lat, lon);
       if temp_12mo[mx] == -3.4e38:  ex_good = False; blog('bad temp', lat, lon);
+  toa_12mo = np.array(gtu.toa_series(lat))    
   temp_12mo = np.array(temp_12mo)
   srad_12mo = np.array(srad_12mo)
   prec_12mo = np.array(prec_12mo)
   wind_12mo = np.array(wind_12mo)
-  rnn_seq = [srad_12mo, prec_12mo, wind_12mo]
-
+  rnn_seq = [srad_12mo, prec_12mo, toa_12m0, wind_12mo]
   vis_down = np.nanmean(hi) * 1000.0 / 24
   if vis_down < -1.0 or vis_down > 500.0: ex_good = False;  blog('bad gsa_vis_down:', lat, lon, vis_down)
   toa_pwr = gtu.toaPower(lat)
@@ -223,7 +234,6 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
   if wc_prec < 0   or wc_prec > 600:  ex_good =False;  blog('bad wc_prec:', lat, lon, prec)
   wc_srad = gtu.acc12mo_avg(srad_12mo)
   if wc_srad< 0.0  or wc_srad > (600.0*85.0):  ex_good =False;  blog('bad wc_srad:', lat, lon, wc_srad)
-
   #pdb.set_trace()
   elev = np.nanmean(el)
   elev_std = np.nanstd(el)
