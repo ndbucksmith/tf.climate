@@ -220,9 +220,9 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
       prec_12mo.append(wd_filteredstats(precds[mx].read(1, window=wcwnd), -32768))
       temp_12mo.append(wd_filteredstats(tavgds[mx].read(1, window=wcwnd), -3.4e+38))
       wind_12mo.append(wd_filteredstats(windds[mx].read(1, window=wcwnd), -3.4e+38))
-      if srad_12mo[mx] == 65535: ex_good = False; blog('bad srad', lat, lon);
-      if prec_12mo[mx] == -32768: ex_good = False; blog('bad prec', lat, lon);
-      if temp_12mo[mx] == -3.4e38:  ex_good = False; blog('bad temp', lat, lon);
+      if srad_12mo[mx] == 65535: ex_good = False; blog('bad srad ', lat, lon);
+      if prec_12mo[mx] == -32768: ex_good = False; blog('bad prec ', lat, lon);
+      if temp_12mo[mx] == -3.4e38:  ex_good = False; blog('bad temp ', lat, lon);
   toa_12mo = np.array(gtu.toa_series(lat))    
   temp_12mo = np.array(temp_12mo)
   srad_12mo = np.array(srad_12mo)
@@ -230,19 +230,19 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
   wind_12mo = np.array(wind_12mo)
   rnn_seq = [srad_12mo, prec_12mo, toa_12mo, wind_12mo]
   vis_down = np.nanmean(hi) * 1000.0 / 24
-  if vis_down < -1.0 or vis_down > 500.0: ex_good = False;  blog('bad gsa_vis_down:', lat, lon, vis_down)
+  if vis_down < -1.0 or vis_down > 500.0: ex_good = False;  blog('bad gsa_vis_down: ', lat, lon, vis_down)
   toa_pwr = gtu.toaPower(lat)
   assert toa_pwr > vis_down
   temp  = np.nanmean(te)
-  if temp < -80  or temp > 80.0: ex_good = False;  blog('bad gsa_temp:', lat, lon, temp)
+  if temp < -80  or temp > 80.0: ex_good = False;  blog('bad gsa_temp: ', lat, lon, temp)
   wc_temp = gtu.acc12mo_avg(temp_12mo)
-  if wc_temp < - 80  or wc_temp > 80.0: ex_good =False;  blog('bad wc_temp:', lat, lon, wc_temp)
+  if wc_temp < - 80  or wc_temp > 80.0: ex_good =False;  blog('bad wc_temp: ', lat, lon, wc_temp)
   wc_prec = gtu.acc12mo_avg(prec_12mo)
-  if wc_prec < 0   or wc_prec > 600:  ex_good =False;  blog('bad wc_prec:', lat, lon, prec)
+  if wc_prec < 0   or wc_prec > 600:  ex_good =False;  blog('bad wc_prec: ', lat, lon, wc_prec)
   wc_srad = gtu.acc12mo_avg(srad_12mo)
-  if wc_srad< 0.0  or wc_srad > (600.0*85.0):  ex_good =False;  blog('bad wc_srad:', lat, lon, wc_srad)
+  if wc_srad< 0.0  or wc_srad > (600.0*85.0):  ex_good =False;  blog('bad wc_srad: ', lat, lon, wc_srad)
   wc_wind = gtu.acc12mo_avg(wind_12mo)
-  if wc_wind< 0.0  or wc_wind > 100.0:  ex_good =False;  blog('bad wc_srad:', lat, lon, wc_srad)
+  if wc_wind< 0.0  or wc_wind > 100.0:  ex_good =False;  blog('bad wc_srad: ', lat, lon, wc_wind)
   #pdb.set_trace()
   elev = np.nanmean(el)
   elev_std = np.nanstd(el)
@@ -252,10 +252,10 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
   zs = (el == 0.0).sum()
   pwr_ratio = vis_down / toa_pwr
   if elev < -100:
-    ex_good = False; blog('bad elev:', lat, lon)
+    ex_good = False; blog('bad elev: ', lat, lon)
   lc = lcds.read(1, window=lcwnd)
   land, water, ice = lc_histo(lc)
-  if land == -1: ex_good = False;  blog('bad lwi:', lat, lon)
+  if land == -1: ex_good = False;  blog('bad lwi: ', lat, lon)
   barop = gtu.bp_byalt(elev)
   if lat > 0:
     sh1h = 0.0; nh1h = 1.0
