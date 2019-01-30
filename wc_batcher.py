@@ -23,31 +23,36 @@ lc legend 0 nota? 10 to 200 land, 210 water, 200 snow ice, 255 nodata?
 
 """
 
-feat_list = ['lon', 'lat', 'vis_down', 'toa_pwr', 'elev', 'barop', 'pwr_ratio', 'wc_prec', 'wc_srad', \
+nn_features = ['lon', 'lat', 'vis_down', 'toa_pwr', 'elev', 'barop', 'pwr_ratio', 'wc_prec', 'wc_srad', \
              'land', 'water', 'ice', \
              'sh1h', 'nh1h', 'vis_dstd', 'elev_std', 'zs', 'gtzs', 'ltzs']  
-feat_list_width = len(feat_list)
-feat_norms = [1.0, 1.0, 310.0,  415.0, 7000.0, 760.0, 1.0, 200.0, 500.0, \
+nn_feat_len = len(nn_features)
+nn_norms = [1.0, 1.0, 310.0,  415.0, 7000.0, 760.0, 1.0, 200.0, 500.0, \
               1.0, 1.0, 1.0,  \
               1.0, 1.0, 50.0, 1000.0, 400.0, 400.0, 400.0]
-assert len(feat_norms) == feat_list_width
+assert len(nn_norms) == nn_feat_len
+rnn_features =['srad','prec','toa','wind']
+rnn_norms = [310.0*80.0, 180.0, 500.0, 10.0]
+rnn_feat_len = 4
 
+#to build wc data file names
 def str2(mx):
   if mx < 9:
     return str(0) + str(mx+1)
   else:
     return str(mx+1)
 
+#record bad data errors during batching
 def blog(msg, lat, lon, val=0.001):
   with open('berrlog.txt', 'a') as fo:
     fm = msg + str(lat) + '  ' + str(lon) + '  ' + str(val)
     print(fm)
     fo.write(fm + '\r')
 
-# create all data soruces as globals
-elds = rio.open('ELE.tif')
-hids = rio.open('GHI.tif')
-teds = rio.open('TEMP.tif')  
+# create all data sources as globals
+elds = rio.open('wcdat/ELE.tif')
+hids = rio.open('wcdat/GHI.tif')
+teds = rio.open('wcdat/TEMP.tif')  
 sradds = []; tavgds = []; precds = []; windds = [];
 fn_prefix = '/wc2.0_30s_'
 file_dirs = ['srad', 'prec', 'wind', 'tavg']
@@ -57,7 +62,9 @@ for mx in range(12):
   precds.append(rio.open('wcdat/prec' + fn_prefix + 'prec_' +  str2(mx) +'.tif'))
   windds.append(rio.open('wcdat/wind' + fn_prefix + 'wind_' +  str2(mx) +'.tif'))
 lcds = rio.open('wcdat/lc/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2015-v2.0.7.tif')
-# open list points withj global solar data 20 kliock square with data
+
+
+# open list of points withj global solar data 20 klick squares with data
 with open('winstats/summary_cts.pkl', 'r') as fi:
   _dc = pickle.load(fi)
 testcts = _dc['testcts']
@@ -221,7 +228,7 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
   srad_12mo = np.array(srad_12mo)
   prec_12mo = np.array(prec_12mo)
   wind_12mo = np.array(wind_12mo)
-  rnn_seq = [srad_12mo, prec_12mo, toa_12m0, wind_12mo]
+  rnn_seq = [srad_12mo, prec_12mo, toa_12mo, wind_12mo]
   vis_down = np.nanmean(hi) * 1000.0 / 24
   if vis_down < -1.0 or vis_down > 500.0: ex_good = False;  blog('bad gsa_vis_down:', lat, lon, vis_down)
   toa_pwr = gtu.toaPower(lat)
@@ -234,6 +241,8 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
   if wc_prec < 0   or wc_prec > 600:  ex_good =False;  blog('bad wc_prec:', lat, lon, prec)
   wc_srad = gtu.acc12mo_avg(srad_12mo)
   if wc_srad< 0.0  or wc_srad > (600.0*85.0):  ex_good =False;  blog('bad wc_srad:', lat, lon, wc_srad)
+  wc_wind = gtu.acc12mo_avg(wind_12mo)
+  if wc_wind< 0.0  or wc_wind > 100.0:  ex_good =False;  blog('bad wc_srad:', lat, lon, wc_srad)
   #pdb.set_trace()
   elev = np.nanmean(el)
   elev_std = np.nanstd(el)
@@ -252,8 +261,8 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
     sh1h = 0.0; nh1h = 1.0
   else:  
     sh1h = 1.0; nh1h = 0.0
-  gtu.arprint([lat, lon, temp, wc_temp, temp_12mo.min(), temp_12mo.max()])
-  print(ex_good)
+  gtu.arprint([lat, lon, temp, wc_temp, temp_12mo.min(), temp_12mo.max(), wind_12mo.max()])
+  #print(ex_good)
   ins = [lon, lat, vis_down, toa_pwr, elev, barop, pwr_ratio, wc_prec, wc_srad, land, water, ice, \
          sh1h, nh1h, vis_dstd, elev_std, zs, gtzs, ltzs,]  
   return np.array(ins), temp, ex_good, rnn_seq, temp_12mo, wc_temp
@@ -264,8 +273,8 @@ def get_batch(size, bTrain):
   wc_trs=[]; rnn_trus = [];   
   for ix in range(size):
     b_g = False
-    print('bx',ix)
-    while not b_g:
+    #print('bx',ix)
+    while not b_g:  # reject exampel with bad data
       ptix = np.random.randint(0,train_total)
       ins, temp, b_g, r_s, t_12, wc_t = bld_eu_examp(ptix, 20, bTrain)
     ins_bat.append(ins)

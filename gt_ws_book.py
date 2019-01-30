@@ -10,9 +10,9 @@ import gt_utils as gtu
 """
 create pkl files with dicts for each window
 """
-elds = rio.open('ELE.tif')
-hids = rio.open('GHI.tif')
-teds = rio.open('TEMP.tif')
+elds = rio.open('wcdat/ELE.tif')
+hids = rio.open('wcdat/GHI.tif')
+teds = rio.open('wcdat/TEMP.tif')
 _st = time.time()
 traincts=[]; testcts=[]; badels = []
 for _start in range(0, 105, 5):
