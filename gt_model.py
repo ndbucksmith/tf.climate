@@ -8,6 +8,7 @@ import math
 import tensorflow as tf
 import gt_utils as gtu
 import gt_batcher as gtb
+import wc_batcher as wcb
 
 """
 tensorflow models to predict temperature as a function of solar power, toa power, elevation
@@ -179,14 +180,79 @@ class artisanalModel():
     return fd
 
 class climaRNN():
-  def __init__(self, params)
-  self.cell_size = params['cell_size']
-  xin_size = params['rxin_size']; self.xin_size = xin_size 
-  self.cell_fw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size) 
-  self.cell_bw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size)
-  self.xin = tf.placeholder(tf.float32, (None, 12,  xin_size), name='xin')
-  outs, outstates = tf.nn.bidirectional_dynamic_rnn(self.cell_fw, self.cell_bw, xin)
-  #default is both states (fw and bw) init to zeros
-  pdb.set_trace()
-  rnn_wy1 = tf.get_variable('wy', None, tf.float32, tf.random_normal([f_width, y_size], stddev=istd))
-  rnn_by1 = tf.get_variable('by', None, tf.float32, tf.random_normal([y_size], stddev=0.01))
+  def __init__(self, sess, params, bTrain=True):
+    cell_size = params['cell_size']; self.cell_size = cell_size 
+    xin_size = params['rxin_size']; self.xin_size = xin_size
+    y_size = 1
+    self.sess = sess
+    self.cell_fw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size) 
+    self.cell_bw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size)
+    self.xin = tf.placeholder(tf.float32, (None, 12,  xin_size), name='rnn_xin')
+    self.norms =  tf.placeholder(tf.float32, (xin_size), name='rnx_norms')
+    self.xnorms = tf.divide(self.xin, self.norms)
+    (fwouts, bwouts),(fwstate, bwstate) = tf.nn.bidirectional_dynamic_rnn( \
+                  self.cell_fw,
+                  self.cell_bw,
+                  self.xnorms,
+                  dtype=tf.float32)
+    #default is both states (fw and bw) init to zeros
+    
+    rnn_wy = tf.get_variable('rnn_wy', None, tf.float32, tf.random_normal([cell_size*2, y_size], stddev=0.01))
+    rnn_by = tf.get_variable('rnn_by', None, tf.float32, tf.random_normal([y_size], stddev=0.01))
+    hypos = []; losses = []; y_trues = []; lossers = [];
+    outs = tf.concat((fwouts, bwouts), axis=2)
+    for ix in range(12):
+      y_trues.append(tf.placeholder(tf.float32, (None,  y_size), name='rnn_yt'+str(ix)))
+      hypos.append(tf.add(rnn_by, tf.matmul(outs[:,ix,:], rnn_wy), name='h_'+str(ix)))
+      losses.append(tf.square(y_trues[ix] - hypos[ix]))
+      lossers.append(tf.reduce_mean(losses[ix]))
+    self.hypos = hypos; self.losses = losses; self.lossers = lossers;
+    self.y_trues = y_trues
+    loss = tf.add_n(losses); self.loss = loss;
+    if bTrain:
+      global_step = tf.Variable(0, trainable=False)
+      start_learnrate = params['learn_rate']                          
+      self.learning_rate = tf.train.exponential_decay(start_learnrate, global_step, 300000, 0.9, staircase=True)
+      optimizer = tf.train.AdamOptimizer(self.learning_rate)
+      #optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
+      self.ts = optimizer.minimize(loss, global_step=global_step)
+    else:
+      self.ts = None; 
+    #pdb.set_trace()
+    vars_to_save=(v.name for v in tf.trainable_variables())
+    self.saver=tf.train.Saver(var_list=tf.trainable_variables(), max_to_keep=4)
+    #pdb.set_trace()
+
+  def bld_feed(self, ins, rins, rn_trus):
+    fd ={}
+    static_ins = ins[:,2:]
+    static_norms = wcb.nn_norms[2:]
+    static_12mo = []
+    rn_trus = np.reshape(np.array(rn_trus), (-1,12,1))
+    #pdb.set_trace()
+    for mx in range(12):
+      static_12mo.append(static_ins)
+      fd[self.y_trues[mx]] = rn_trus[:,mx]
+
+    rins_swap = np.swapaxes(rins, 1, 2)
+    stat_swap = np.swapaxes(static_12mo, 0, 1)
+    full_rinset = np.concatenate((stat_swap, rins_swap), axis=2)
+    full_normset = np.concatenate((static_norms, wcb.rnn_norms))
+    fd[self.xin] = full_rinset
+    fd[self.norms] = full_normset
+    #pdb.set_trace()
+    return fd
+    
+
+"""
+print(fwouts)
+Tensor("bidirectional_rnn/fw/fw/transpose_1:0", shape=(?, 12, 32), dtype=float32)
+
+print(bwouts)
+Tensor("ReverseV2:0", shape=(?, 12, 32), dtype=float32)
+
+print(hypos)
+[<tf.Tensor 'h_0:0' shape=(?, 1) dtype=float32>, <tf.Tensor 'h_1:0' shape=(?, 1) dtype=float32>, <tf.Tensor 'h_2:0' shape=(?, 1) dtype=float32>, <tf.Tensor 'h_3:0' shape=(?, 1) dtype=float32>, <tf.Tensor 'h_4:0' shape=(?, 1) dtype=float32>, <tf.Tensor 'h_5:0' shape=(?, 1) dtype=float32>, <tf.Tensor 'h_6:0' shape=(?, 1) dtype=float32>, <tf.Tensor 'h_7:0' shape=(?, 1) dtype=float32>, <tf.Tensor 'h_8:0' shape=(?, 1) dtype=float32>, <tf.Tensor 'h_9:0' shape=(?, 1) dtype=float32>, <tf.Tensor 'h_10:0' shape=(?, 1) dtype=float32>, <tf.Tensor 'h_11:0' shape=(?, 1) dtype=float32>]
+
+
+"""

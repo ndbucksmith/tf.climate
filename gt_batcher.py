@@ -17,9 +17,9 @@ feat_list_width = len(feat_list)
 feat_norms = [1.0, 1.0, 310.0, 30.0, 415.0, 7000.0, 1000.0, 40.0, 400.0, 400.0, 1.0, 1.0, 1.0, 760.0]
 
 
-elds = rio.open('ELE.tif')
-hids = rio.open('GHI.tif')
-teds = rio.open('TEMP.tif')
+elds = rio.open('wcdat/ELE.tif')
+hids = rio.open('wcdat/GHI.tif')
+teds = rio.open('wcdat/TEMP.tif')
 _st = time.time()
 with open('winstats/summary_cts.pkl', 'r') as fi:
   _dc = pickle.load(fi)
