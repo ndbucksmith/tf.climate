@@ -40,7 +40,7 @@ sess.run(tf.global_variables_initializer())
 
 for mcx in range(500):
 
-  for tx in range(80):
+  for tx in range(112):
     start_t = time.time()
     if False:
       ins, trus = gtb.get_batch(params['batch_size'], True)
@@ -62,7 +62,8 @@ for mcx in range(500):
     errs =np.array(errs)
     if tx % 100 == 99:
       pass #pdb.set_trace()
-    gtu.arprint([tx, errs.mean(), errs.max(), errs.min(),  ests[0].mean(), ests[0].min(), ests[0].max()])
+    gtu.arprint([tx, errs.mean(), errs.max(), errs.min(),  ests[6].mean(), ests[6].min(), ests[6].max(), \
+                 yt[6].mean(), yt[6].min(), yt[6].max()])
 
   if errs.mean() < 80.0:
     pdb.set_trace()
