@@ -5,17 +5,19 @@ import matplotlib as plt
 import pickle
 import pdb
 import math
-
-
-
 import gt_utils as gtu
-
 import wc_batcher as wtb
 
-float_formatter = lambda x: "%.1f" % x
-np.set_printoptions(formatter={'float_kind':float_formatter})
+"""
+Saves pickled batches using wc batcher
 
-for tx in range(1000):
+
+
+copyright 2019 Nelson 'Buck' Smith
+"""
+
+
+for tx in range(16, 1000):
   start_t = time.time()
   ins, trus, rnn_seqs, wc_trues, rnn_trus = wtb.get_batch(400, True)
   dc = {}

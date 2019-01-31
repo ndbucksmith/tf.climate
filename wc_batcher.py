@@ -21,6 +21,9 @@ glo elevation   int16  nodata -32768
 lc   land       unit8   no data 256
 lc legend 0 nota? 10 to 200 land, 210 water, 200 snow ice, 255 nodata?
 
+
+copyright 2019 Nelson 'Buck' Smith
+
 """
 
 nn_features = ['lon', 'lat', 'vis_down', 'toa_pwr', 'elev', 'barop', 'pwr_ratio', 'wc_prec', 'wc_srad', \

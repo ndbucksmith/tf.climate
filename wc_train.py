@@ -11,7 +11,13 @@ import gt_model as gtm
 import wc_batcher as wcb
 
 """
-trains two model classes in the same session
+trains rnn climate model using tf bidrectional dynamic rnn.  Using dynamic rnn even though 
+our sequence length is static (12 months) becuase tf dynamic rnn is more flexible for data 
+martialing
+
+
+
+copyright 2019 Nelson 'Buck' Smith
 
 """
 

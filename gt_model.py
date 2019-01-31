@@ -14,6 +14,8 @@ import wc_batcher as wcb
 tensorflow models to predict temperature as a function of solar power, toa power, elevation
  and eventually many other parameters
 
+
+copyright 2019 Nelson 'Buck' Smith
 """
 
 
@@ -242,7 +244,13 @@ class climaRNN():
     fd[self.norms] = full_normset
     #pdb.set_trace()
     return fd
-    
+
+
+  def save(self, path, tx):
+    save_path = self.saver(self.sess, path+str(tx)+'ckpt', write_meta_graph=False)
+
+  def restore(self, path):
+    self.save.restore(self.sess, path)
 
 """
 print(fwouts)
