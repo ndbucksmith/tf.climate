@@ -221,8 +221,8 @@ class climaRNN():
     else:
       self.ts = None; 
     #pdb.set_trace()
-    vars_to_save=(v.name for v in tf.trainable_variables())
-    self.saver=tf.train.Saver(var_list=tf.trainable_variables(), max_to_keep=4)
+    self.vars_to_save=(v.name for v in tf.trainable_variables())
+ 
     #pdb.set_trace()
 
   def bld_feed(self, ins, rins, rn_trus):
@@ -247,10 +247,15 @@ class climaRNN():
 
 
   def save(self, path, tx):
-    save_path = self.saver(self.sess, path+str(tx)+'ckpt', write_meta_graph=False)
+    #pdb.set_trace()
+    sv1 = tf.train.Saver()
+    with self.sess as ses:
+      save_path = sv1.save(ses, path+str(tx)+'ckpt', write_meta_graph=False)
 
   def restore(self, path):
-    self.save.restore(self.sess, path)
+    sv1 = tf.train.Saver()
+    with self.sess as ses:
+      sv1.restore(self.sess, path)
 
 """
 print(fwouts)
