@@ -34,7 +34,7 @@ There are three models
 
 4. Testers coming soon
 
-### metrics,data, and models
+### metrics, data, and models
 
 All models are wrong, some models are useful. For the purpose of determining climate sensitivity a validated model with less than 2.0 degress C of mean squared error (MSE) is sure to be useful. 
 
@@ -44,7 +44,7 @@ All models are wrong, some models are useful. For the purpose of determining cli
 |Artisanal| ~7-10  |
 |RNN      |  ~7-10 |
 
-The data is heavily biased toward land, though there are a few kilometers of data in the ocean around most coasts.  It also ultimately northern hemisphere centric because there is much more land in northern hemishpere.  Use of biderctional RNN helps avoid hemisphere confusions, though we still input hemisphere as a two wide NS onehot into both NN and RNN.
+The data is heavily biased toward land, though there are a few kilometers of data in the ocean around most coasts.  It is also northern hemisphere centric because there is much more land in northern hemishpere.  Use of bidirectional RNN helps avoid hemisphere confusions, though we still input hemisphere as a two wide NS onehot into both NN and RNN.
 
 
 ### data sources 
