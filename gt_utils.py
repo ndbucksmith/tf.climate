@@ -11,8 +11,11 @@ import math
 """
 utilites for geotiff files
 include building, saving loading lists of windows
-longitude latutde to index conversion
+longitude latutde to index conversion (deprecated use rasterio)
 toa power,alnedo  by latitude
+toa power by lattitude and month
+
+copyright 2019 Nelson "Buck" Smith
 """
 class latluts:
     lattitude = [-90.0,-80.0,-70.0,-60.0,-50.0,-40.0,-30.0,-20.0,-10.0, 0.0,

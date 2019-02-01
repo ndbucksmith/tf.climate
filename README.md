@@ -18,9 +18,15 @@ average temperature at any location as a function of:
 
 The  goal of this project is a validated differentiable function that can be used to determine climate sensitivity to greenhouse gas warming.
 
+Currently there are  three models
+
+1. A simple neaural netowrk using annual averages for up to 17 features
+2. A simple linear model, originally using only surface solar power and elevation, originally called stupidModel.  However it outperforms the neural net, especially after adding toa power ratio, i.e. surface solar power / toa power.  This ratio is a pretty good measure of greenhouse power magnitude. Given its [respectable] performance it has been renamed artisinal model ;)
+3. A recurrent neural network that takes montly values for radiation at surface and toa plus precipitation and wind plus the annual averages.  
 
 
-# Data Sources 
+
+### Data Sources 
 
 https://globalsolaratlas.info/downloads/world
 

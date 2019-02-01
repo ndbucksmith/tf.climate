@@ -277,7 +277,7 @@ def get_batch(size, bTrain):
   for ix in range(size):
     b_g = False
     #print('bx',ix)
-    while not b_g:  # reject exampel with bad data
+    while not b_g:  # reject examples with bad data
       ptix = np.random.randint(0,train_total)
       ins, temp, b_g, r_s, t_12, wc_t = bld_eu_examp(ptix, 20, bTrain)
     ins_bat.append(ins)
