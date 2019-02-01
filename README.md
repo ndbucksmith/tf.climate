@@ -11,7 +11,7 @@ average temperature at any location as a function of:
 * land or water or ice one hot
 * hemisphere onehot
 * albedo
-* convolutions of surrouning area such as
+* convolutions of surrounding area such as
    * NS and EW slope
    * STD of elevation
 
