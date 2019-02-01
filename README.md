@@ -36,10 +36,12 @@ There are three models
 
 ### metrology
 
+All models are wrong, some models are useful. For the purpose of determining climate sensitivity a validated model with less than 2.0 degress C of MSE is sure to be useful.
+
 |Model| Mean Sq Err degC|
 |-----|-----------------|
 |NN       | ~100            |
-|Artisianl| ~7-10      |
+|Artisinal| ~7-10      |
 |RNN      |  ~7-10 |
 
 
