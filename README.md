@@ -4,7 +4,7 @@ Tensorflow models are trained using climate data. The learned functions predict
 average temperature at any location as a function of:
 
 * vis radiation down
-* TOA vis radiation (pure function of latitude)
+* TOA vis radiation (pure function of latitude) toa=top of atmosphere
 * elevation
 * barometric pressure as a function of elevation
 * precipitation
@@ -18,12 +18,29 @@ average temperature at any location as a function of:
 
 The  goal of this project is a validated differentiable function that can be used to determine climate sensitivity to greenhouse gas warming.
 
-Currently there are  three models
+There are three models
 
-1. A simple neaural netowrk using annual averages for up to 17 features
-2. A simple linear model, originally using only surface solar power and elevation, originally called stupidModel.  However it outperforms the neural net, especially after adding toa power ratio, i.e. surface solar power / toa power.  This ratio is a pretty good measure of greenhouse power magnitude. Given its [respectable] performance it has been renamed artisinal model ;)
-3. A recurrent neural network that takes montly values for radiation at surface and toa plus precipitation and wind plus the annual averages.  
+1. A simple neural network using annual averages for up to 17 features
+2. A simple linear model, originally using only surface solar power and elevation, originally called stupidModel.  However it outperforms the neural net, especially after adding toa power ratio, i.e. surface solar power / toa power.  This ratio is a pretty good measure of greenhouse power magnitude. Given its [respectable] performance it has been renamed artisanal model ;)
+3. A recurrent neural network that takes monthly values for radiation at surface and toa plus precipitation and wind plus the annual averages as inputs and outputs a set of 12 monthly temperatures.  
 
+### workflow
+
+1. gt_ws_book.py looks at 20 pixel squares in the global solar atlas data files, which are 60N to 55S latitude.  Each square with valid data is assigned to be either a training or test example. output files saved in winstats folder
+
+2. Batchers use the winstat data to  pick random 20 pixel squares from train or test data sets and then assemble the data from global solar atlas. wc_batcher.py includes worldclim monthly data  plus ESACCI-LC land code data which is used to calculate fraction of the pixel square that is land, water, and ice, with fractions summing to ~1.0.  Building a batch is kinda slow.  Lots of big geotif files being manipulated by python rasterio [which is awesome].  batch_savers save the batches with python pickle, which can be quickly read and marshalled up for training.
+
+3. Trainers read the pickle files, build up the feeds and fetches, pass to tf.session.run(), print, save, and display results, and save trained models, or at least the ones worth saving. Cause we have seen some dogs that need to be forgotten!
+
+4. Testers coming soon
+
+### metrology
+
+|Model| Mean Sq Err degC|
+|-----|-----------------|
+|NN       | ~100            |
+|Artisianl| ~7-10      |
+|RNN      |  ~7-10 |
 
 
 ### Data Sources 
