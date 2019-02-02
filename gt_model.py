@@ -260,7 +260,7 @@ class climaRNN():
   def restore(self, path):
     sv1 = tf.train.Saver()
     ses = self.sess
-    sv1.restore(self.sess, path)
+    sv1.restore(ses, path)
 
 """
 print(fwouts)
