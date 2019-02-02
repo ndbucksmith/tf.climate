@@ -31,7 +31,7 @@ params['init_stddev'] = 0.05
 params['take'] = [2,3,4,5,6,7,8,9,10,11,12,13]
 take = params['take']
 params['x_size'] = len(params['take'])
-params['cell_size'] = 47
+params['cell_size'] =  53
 params['rxin_size'] = 21  # wcs + h1h + lwi + el
 pstr = "traing with: "
 for idx in range(len(params['take'])):
@@ -42,11 +42,12 @@ print(pstr)
 sess = tf.Session()
 
 rmdl = gtm.climaRNN(sess, params)
+
 sess.run(tf.global_variables_initializer())
 
-for mcx in range(500):
+for mcx in range(2):
 
-  for tx in range(112):
+  for tx in range(999):
     start_t = time.time()
     if False:
       ins, trus = gtb.get_batch(params['batch_size'], True)
@@ -72,8 +73,8 @@ for mcx in range(500):
                  yt[6].mean(), yt[6].min(), yt[6].max()])
 
   if errs.mean() < 80.0:
-    pdb.set_trace()
+    pass # pdb.set_trace()
 
-  
+rmdl.save('mdl/climarnn_', 550)
  # pdb.set_trace()
   

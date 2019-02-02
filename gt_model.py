@@ -200,7 +200,7 @@ class climaRNN():
     #default is both states (fw and bw) init to zeros
     
     rnn_wy = tf.get_variable('rnn_wy', None, tf.float32, tf.random_normal([cell_size*2, y_size], stddev=0.01))
-    rnn_by = tf.get_variable('rnn_by', None, tf.float32, tf.random_normal([y_size], stddev=0.01))
+    rnn_by = tf.get_variable('rnn_by', None, tf.float32, tf.zeros(y_size))
     hypos = []; losses = []; y_trues = []; lossers = [];
     outs = tf.concat((fwouts, bwouts), axis=2)
     for ix in range(12):
@@ -248,14 +248,19 @@ class climaRNN():
 
   def save(self, path, tx):
     #pdb.set_trace()
-    sv1 = tf.train.Saver()
-    with self.sess as ses:
-      save_path = sv1.save(ses, path+str(tx)+'ckpt', write_meta_graph=False)
+    sv1 = tf.train.Saver(var_list=tf.trainable_variables())
+    tvar = tf.trainable_variables()
+    tvar_vals = self.sess.run(tvar)
+    for var, val in zip(tvar, tvar_vals):
+      print(var.name, var.shape)
+    print(val)
+    ses = self.sess
+    save_path = sv1.save(ses, path+str(tx)+'.ckpt',)
 
   def restore(self, path):
     sv1 = tf.train.Saver()
-    with self.sess as ses:
-      sv1.restore(self.sess, path)
+    ses = self.sess
+    sv1.restore(self.sess, path)
 
 """
 print(fwouts)
