@@ -200,7 +200,10 @@ def get_example_index(wx, pickpt, bTrain):
 # some qc checks are ugly but necessary
 def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
   ex_good = True
-  wx, pickpt = get_windpt(ptix, train_sums)
+  if bTrain:
+    wx, pickpt = get_windpt(ptix, train_sums)
+  else:
+    wx, pickpt = get_windpt(ptix, test_sums)
   #print(wx, pickpt)
   wnd, lax, lox, datct  = get_example_index(wx, pickpt, bTrain)
   if _unit == 10:
@@ -278,7 +281,10 @@ def get_batch(size, bTrain):
     b_g = False
     #print('bx',ix)
     while not b_g:  # reject examples with bad data
-      ptix = np.random.randint(0,train_total)
+      if bTrain:
+        ptix = np.random.randint(0,train_total)
+      else:
+        ptix = np.random.randint(0,test_total)      
       ins, temp, b_g, r_s, t_12, wc_t = bld_eu_examp(ptix, 20, bTrain)
     ins_bat.append(ins)
     trus_bat.append(temp)
