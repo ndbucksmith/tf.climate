@@ -182,14 +182,16 @@ class artisanalModel():
     return fd
 
 class climaRNN():
-  def __init__(self, sess, params, bTrain=True):
+  def __init__(self, _years, sess, params, bTrain=True):
     cell_size = params['cell_size']; self.cell_size = cell_size 
     xin_size = params['rxin_size']; self.xin_size = xin_size
     y_size = 1
     self.sess = sess
-    self.cell_fw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size) 
-    self.cell_bw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size)
-    self.xin = tf.placeholder(tf.float32, (None, 12,  xin_size), name='rnn_xin')
+  #  self.cell_fw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size, name='fwd_cell') 
+ #   self.cell_bw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size, name='bwd_cell')
+    self.cell_fw =  tf.nn.rnn_cell.GRUCell(num_units=self.cell_size, name='fwd_cell') 
+    self.cell_bw =  tf.nn.rnn_cell.GRUCell(num_units=self.cell_size, name='bwd_cell')
+    self.xin = tf.placeholder(tf.float32, (None, 12*_years,  xin_size), name='rnn_xin')
     self.norms =  tf.placeholder(tf.float32, (xin_size), name='rnx_norms')
     self.xnorms = tf.divide(self.xin, self.norms)
     (fwouts, bwouts),(fwstate, bwstate) = tf.nn.bidirectional_dynamic_rnn( \
@@ -203,7 +205,7 @@ class climaRNN():
     rnn_by = tf.get_variable('rnn_by', None, tf.float32, tf.zeros(y_size))
     hypos = []; losses = []; y_trues = []; lossers = [];
     outs = tf.concat((fwouts, bwouts), axis=2)
-    for ix in range(12):
+    for ix in range(12*_years):
       y_trues.append(tf.placeholder(tf.float32, (None,  y_size), name='rnn_yt'+str(ix)))
       hypos.append(tf.add(rnn_by, tf.matmul(outs[:,ix,:], rnn_wy), name='h_'+str(ix)))
       losses.append(tf.square(y_trues[ix] - hypos[ix]))
@@ -222,13 +224,15 @@ class climaRNN():
       self.ts = None; 
     #pdb.set_trace()
     self.vars_to_save=(v.name for v in tf.trainable_variables())
+    self.vl = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+    self.sv1 = tf.train.Saver()
  
     #pdb.set_trace()
 
   def bld_feed(self, ins, rins, rn_trus):
     fd ={}
-    static_ins = ins[:,2:]
-    static_norms = wcb.nn_norms[2:]
+    static_ins = ins[:,1:]
+    static_norms = wcb.nn_norms[1:]
     static_12mo = []
     rn_trus = np.reshape(np.array(rn_trus), (-1,12,1))
     #pdb.set_trace()
@@ -245,23 +249,51 @@ class climaRNN():
     #pdb.set_trace()
     return fd
 
+  def bld_multiyearfeed(self, yrs, ins, rins, rn_trus):
+    fd ={}
+    static_ins = ins[:,1:]  #shape batch, 20 odd
+    static_norms = wcb.nn_norms[1:]  #shape 20 od
+    static_multiyr = []
+    rn_trus = np.reshape(np.array(rn_trus), (-1,12,1))
+    #pdb.set_trace()
+    for mx in range(12*yrs):
+      static_multiyr.append(static_ins)  #shape mo, batch, 20 odd
+      fd[self.y_trues[mx]] = rn_trus[:,mx % 12]
+   # rins are  batch, feature, month  swap to batch, month, feature 
+    rins_swap = np.swapaxes(rins, 1, 2)
+    rins_multiyr = rins_swap
+    for yx in range(yrs-1):
+        rins_multiyr = np.concatenate((rins_multiyr, rins_swap), axis=1)
+    static_multiyr = np.array(static_multiyr)
+    stat_swap = np.swapaxes(static_multiyr, 0, 1) # swap to bat,mo,feat
+    full_rinset = np.concatenate((stat_swap, rins_multiyr), axis=2)
+    full_normset = np.concatenate((static_norms, wcb.rnn_norms))
+    fd[self.xin] = full_rinset
+    fd[self.norms] = full_normset
+    #pdb.set_trace()
+    return fd
+
 
   def save(self, path, tx):
     #pdb.set_trace()
-    sv1 = tf.train.Saver(var_list=tf.trainable_variables())
     tvar = tf.trainable_variables()
     tvar_vals = self.sess.run(tvar)
     for var, val in zip(tvar, tvar_vals):
       print(var.name, var.shape)
     print(val)
     ses = self.sess
-    save_path = sv1.save(ses, path+str(tx)+'.ckpt',)
+    save_path = self.sv1.save(ses, path+str(tx)+'.ckpt', )
 
   def restore(self, path):
-    sv1 = tf.train.Saver()
+   # sv2 = tf.train.import_meta_graph(path + '.meta')
+    vl = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES) #
     ses = self.sess
-    sv1.restore(ses, path)
-
+    self.sv1.restore(ses, path)
+    tvar = tf.trainable_variables()
+    tvar_vals = self.sess.run(tvar)
+    for var, val in zip(tvar, tvar_vals):
+      print(var.name, var.shape)
+    print(val)
 """
 print(fwouts)
 Tensor("bidirectional_rnn/fw/fw/transpose_1:0", shape=(?, 12, 32), dtype=float32)

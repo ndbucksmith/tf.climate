@@ -9,6 +9,7 @@ import tensorflow as tf
 import gt_utils as gtu
 import gt_model as gtm
 import wc_batcher as wcb
+pst = pdb.set_trace
 
 """
 trains rnn climate model using tf bidrectional dynamic rnn.  Using dynamic rnn even though 
@@ -31,8 +32,8 @@ params['init_stddev'] = 0.05
 params['take'] = [2,3,4,5,6,7,8,9,10,11,12,13]
 take = params['take']
 params['x_size'] = len(params['take'])
-params['cell_size'] =  53
-params['rxin_size'] = 21  # wcs + h1h + lwi + el
+params['cell_size'] =  128
+params['rxin_size'] = 22  # wcs + h1h + lwi + el
 pstr = "traing with: "
 for idx in range(len(params['take'])):
   pstr += wcb.nn_features[take[idx]]
@@ -40,14 +41,14 @@ for idx in range(len(params['take'])):
 print(pstr)
 
 sess = tf.Session()
-
-rmdl = gtm.climaRNN(sess, params)
-
-sess.run(tf.global_variables_initializer())
+#pst()
+rmdl = gtm.climaRNN(1, sess, params)
+init_op = tf.global_variables_initializer()
+sess.run(init_op)
 
 for mcx in range(2):
 
-  for tx in range(999):
+  for tx in range(1000):
     start_t = time.time()
     if False:
       ins, trus = gtb.get_batch(params['batch_size'], True)
@@ -61,7 +62,7 @@ for mcx in range(2):
         rn_trus =  dc['rnn_trus']
         trus = dc['trus']
     #pdb.set_trace()
-    feed = rmdl.bld_feed(ins, rsqs, rn_trus)
+    feed = rmdl.bld_multiyearfeed(1, ins, rsqs, rn_trus)
 
     fetch = [rmdl.lossers, rmdl.hypos, rmdl.ts, rmdl.y_trues, ]
  
@@ -75,6 +76,12 @@ for mcx in range(2):
   if errs.mean() < 80.0:
     pass # pdb.set_trace()
 
-rmdl.save('mdl/climarnn_', 550)
- # pdb.set_trace()
+rmdl.save('mdls/climarnn_', tx)
+tvars = tf.trainable_variables()
+tvars_vals = sess.run(tvars)
+
+if True:
+  for var, val in zip(tvars, tvars_vals):
+    print(var.name,var.shape)
+print(val)
   

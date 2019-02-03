@@ -1,2 +1,0 @@
-model_checkpoint_path: "climarnn_550.ckpt"
-all_model_checkpoint_paths: "climarnn_550.ckpt"

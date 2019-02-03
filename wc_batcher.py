@@ -30,7 +30,7 @@ nn_features = ['lon', 'lat', 'vis_down', 'toa_pwr', 'elev', 'barop', 'pwr_ratio'
              'land', 'water', 'ice', \
              'sh1h', 'nh1h', 'vis_dstd', 'elev_std', 'zs', 'gtzs', 'ltzs']  
 nn_feat_len = len(nn_features)
-nn_norms = [1.0, 1.0, 310.0,  415.0, 7000.0, 760.0, 1.0, 200.0, 500.0, \
+nn_norms = [1.0, 180.0, 310.0,  415.0, 7000.0, 760.0, 1.0, 200.0, 500.0, \
               1.0, 1.0, 1.0,  \
               1.0, 1.0, 50.0, 1000.0, 400.0, 400.0, 400.0]
 assert len(nn_norms) == nn_feat_len
