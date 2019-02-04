@@ -201,13 +201,17 @@ class climaRNN():
                   dtype=tf.float32)
     #default is both states (fw and bw) init to zeros
     
-    rnn_wy = tf.get_variable('rnn_wy', None, tf.float32, tf.random_normal([cell_size*2, y_size], stddev=0.01))
+    rnn_wy = tf.get_variable('rnn_wy', None, tf.float32, tf.random_normal(
+                               [(cell_size*2) + xin_size, y_size],\
+                               stddev=0.01))
     rnn_by = tf.get_variable('rnn_by', None, tf.float32, tf.zeros(y_size))
     hypos = []; losses = []; y_trues = []; lossers = [];
     outs = tf.concat((fwouts, bwouts), axis=2)
     for ix in range(12*_years):
       y_trues.append(tf.placeholder(tf.float32, (None,  y_size), name='rnn_yt'+str(ix)))
-      hypos.append(tf.add(rnn_by, tf.matmul(outs[:,ix,:], rnn_wy), name='h_'+str(ix)))
+      hypos.append(tf.add(rnn_by, tf.matmul(  \
+                          tf.concat((outs[:,ix,:], self.xnorms[:,ix,:]), axis=1), \
+                          rnn_wy), name='h_'+str(ix)))
       losses.append(tf.square(y_trues[ix] - hypos[ix]))
       lossers.append(tf.reduce_mean(losses[ix]))
     self.hypos = hypos; self.losses = losses; self.lossers = lossers;

@@ -32,7 +32,7 @@ params['init_stddev'] = 0.05
 params['take'] = [2,3,4,5,6,7,8,9,10,11,12,13]
 take = params['take']
 params['x_size'] = len(params['take'])
-params['cell_size'] =  128
+params['cell_size'] =  96
 params['rxin_size'] = 22  # wcs + h1h + lwi + el
 pstr = "traing with: "
 for idx in range(len(params['take'])):
@@ -48,7 +48,7 @@ sess.run(init_op)
 
 for mcx in range(2):
 
-  for tx in range(1000):
+  for tx in range(1526):
     start_t = time.time()
     if False:
       ins, trus = gtb.get_batch(params['batch_size'], True)
