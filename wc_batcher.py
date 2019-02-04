@@ -21,6 +21,8 @@ glo elevation   int16  nodata -32768
 lc   land       unit8   no data 256
 lc legend 0 nota? 10 to 200 land, 210 water, 200 snow ice, 255 nodata?
 
+Version 2 batcher corrects errors in prec scaling and bad data filters 
+and adds annual wind value to nn_features
 
 copyright 2019 Nelson 'Buck' Smith
 
@@ -28,14 +30,14 @@ copyright 2019 Nelson 'Buck' Smith
 
 nn_features = ['lon', 'lat', 'vis_down', 'toa_pwr', 'elev', 'barop', 'pwr_ratio', 'wc_prec', 'wc_srad', \
              'land', 'water', 'ice', \
-             'sh1h', 'nh1h', 'vis_dstd', 'elev_std', 'zs', 'gtzs', 'ltzs']  
+               'sh1h', 'nh1h', 'vis_dstd', 'elev_std', 'zs', 'gtzs', 'ltzs', 'wc_wind']  
 nn_feat_len = len(nn_features)
-nn_norms = [1.0, 180.0, 310.0,  415.0, 7000.0, 760.0, 1.0, 200.0, 500.0, \
+nn_norms = [1.0, 90.0, 310.0,  415.0, 7000.0, 760.0, 1.0, 500.0, 2500.0, \
               1.0, 1.0, 1.0,  \
-              1.0, 1.0, 50.0, 1000.0, 400.0, 400.0, 400.0]
+              1.0, 1.0, 50.0, 1000.0, 400.0, 400.0, 400.0, 11.0]
 assert len(nn_norms) == nn_feat_len
 rnn_features =['srad','prec','toa','wind']
-rnn_norms = [310.0*80.0, 180.0, 500.0, 10.0]
+rnn_norms = [32768.0, 2325.0, 500.0, 11.0]
 rnn_feat_len = 4
 
 #to build wc data file names
@@ -244,7 +246,7 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
   wc_temp = gtu.acc12mo_avg(temp_12mo)
   if wc_temp < - 80  or wc_temp > 80.0: ex_good =False;  blog('bad wc_temp: ', lat, lon, wc_temp)
   wc_prec = gtu.acc12mo_avg(prec_12mo)
-  if wc_prec < 0   or wc_prec > 600:  ex_good =False;  blog('bad wc_prec: ', lat, lon, wc_prec)
+  if wc_prec < 0   or wc_prec > 3000:  ex_good =False;  blog('bad wc_prec: ', lat, lon, wc_prec)
   wc_srad = gtu.acc12mo_avg(srad_12mo)
   if wc_srad< 0.0  or wc_srad > (600.0*85.0):  ex_good =False;  blog('bad wc_srad: ', lat, lon, wc_srad)
   wc_wind = gtu.acc12mo_avg(wind_12mo)
@@ -270,7 +272,7 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
   gtu.arprint([lat, lon, temp, wc_temp, temp_12mo.min(), temp_12mo.max(), wind_12mo.max()])
   #print(ex_good)
   ins = [lon, lat, vis_down, toa_pwr, elev, barop, pwr_ratio, wc_prec, wc_srad, land, water, ice, \
-         sh1h, nh1h, vis_dstd, elev_std, zs, gtzs, ltzs,]  
+         sh1h, nh1h, vis_dstd, elev_std, zs, gtzs, ltzs, wc_wind]  
   return np.array(ins), temp, ex_good, rnn_seq, temp_12mo, wc_temp
 
 

@@ -6,7 +6,8 @@ import pickle
 import pdb
 import math
 import gt_utils as gtu
-import wc_batcher as wtb
+import wc_batcher as wcb
+import os
 
 """
 Saves pickled batches using wc batcher
@@ -15,11 +16,13 @@ Saves pickled batches using wc batcher
 
 copyright 2019 Nelson 'Buck' Smith
 """
+target = 'wc_v2'
+start_file = len(os.listdir(target)) 
 
 
-for tx in range(16, 1000):
+for tx in range(start_file, 2000):
   start_t = time.time()
-  ins, trus, rnn_seqs, wc_trues, rnn_trus = wtb.get_batch(400, True)
+  ins, trus, rnn_seqs, wc_trues, rnn_trus = wcb.get_batch(400, True)
   dc = {}
   dc['ins'] = ins
   dc['trus'] = trus
@@ -27,7 +30,7 @@ for tx in range(16, 1000):
   dc['ec_tru'] = wc_trues #alternative verion of reality, man
   dc['rnn_trus'] = rnn_trus
   #print('fx',tx)
-  with open('wc_bs/wcb_' + str(tx) + '.pkl', 'w') as fo:
+  with open(target + '/wcb_' + str(tx) + '.pkl', 'w') as fo:
     dmp = pickle.dumps(dc)
     fo.write(dmp)
 

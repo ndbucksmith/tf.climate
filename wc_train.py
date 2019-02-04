@@ -9,6 +9,7 @@ import tensorflow as tf
 import gt_utils as gtu
 import gt_model as gtm
 import wc_batcher as wcb
+import os
 pst = pdb.set_trace
 
 """
@@ -32,14 +33,15 @@ params['init_stddev'] = 0.05
 params['take'] = [2,3,4,5,6,7,8,9,10,11,12,13]
 take = params['take']
 params['x_size'] = len(params['take'])
-params['cell_size'] =  96
-params['rxin_size'] = 22  # wcs + h1h + lwi + el
+params['cell_size'] =  64
+params['rxin_size'] = 23  # wcs + h1h + lwi + el
 pstr = "traing with: "
 for idx in range(len(params['take'])):
   pstr += wcb.nn_features[take[idx]]
   pstr += ', '
 print(pstr)
-
+target = 'wc_v2'
+file_ct = len(os.listdir(target)) 
 sess = tf.Session()
 #pst()
 rmdl = gtm.climaRNN(1, sess, params)
@@ -48,12 +50,12 @@ sess.run(init_op)
 
 for mcx in range(2):
 
-  for tx in range(1526):
+  for tx in range(file_ct):
     start_t = time.time()
     if False:
       ins, trus = gtb.get_batch(params['batch_size'], True)
     else:
-      with open('wc_bs/wcb_' + str(tx) + '.pkl', 'r') as fi:
+      with open(target + '/wcb_' + str(tx) + '.pkl', 'r') as fi:
         dc = pickle.load(fi)
         ins = dc['ins']
         app = []
@@ -76,12 +78,12 @@ for mcx in range(2):
   if errs.mean() < 80.0:
     pass # pdb.set_trace()
 
-rmdl.save('mdls/climarnn_', tx)
+#rmdl.save('mdls/climarnn_', tx)
 tvars = tf.trainable_variables()
 tvars_vals = sess.run(tvars)
 
-if True:
+if False:
   for var, val in zip(tvars, tvars_vals):
     print(var.name,var.shape)
-print(val)
+
   
