@@ -48,8 +48,24 @@ I was surprised at the awful performance of the pure neural net. I wanted additi
 Errors are largest in the temperate part of the northern hemisphere.  An obvious step to improve accuracy would be to add RNNS for northenr and southern hemisphere or maybe 4 RNNs for North-South Tropics-Temperate.
 The data is heavily biased toward land, though there are a few kilometers of data in the ocean around most coasts.  It is also northern hemisphere centric because there is much more land in northern hemisphere.  Use of bidirectional RNN helps avoid hemisphere confusions, though we still input hemisphere as a two wide NS onehot into both NN and RNN.
 
+### data file drectrory tree
 
-### data sources 
+<pre>
+tfc
+-wcdat
+--lc  #one file 5 second resolution
+--prec  #12 files 30 second resolution
+--srad  #12 files 30 second resolution
+--tavg  #12 files 30 second resolution
+--vapr  #12 files 30 second resolution
+--wind  #12 files 30 second resolution
+-ELE.tif # 30 second resolution
+-GHI.tif  # 30 second resolution
+-TEMP.tif  # 30 second resolution
+</pre>
+
+
+### data source citations
 
 https://globalsolaratlas.info/downloads/world
 
