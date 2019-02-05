@@ -15,7 +15,7 @@ pst = pdb.set_trace
 """
 trains rnn climate model using tf bidrectional dynamic rnn.  Using dynamic rnn even though 
 our sequence length is static (12 months) becuase tf dynamic rnn is more flexible for data 
-martialing
+marshalling
 
 
 
@@ -48,8 +48,9 @@ rmdl = gtm.climaRNN(1, sess, params)
 init_op = tf.global_variables_initializer()
 sess.run(init_op)
 
-for mcx in range(2):
-
+  # loop for trying large number of model reinits
+  # or for multiple runs thru set of training batches
+for mcx in range(2):  
   for tx in range(file_ct):
     start_t = time.time()
     if False:

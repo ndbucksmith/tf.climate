@@ -13,11 +13,9 @@ import wc_batcher as wcb
 pst = pdb.set_trace
 
 """
-trains rnn climate model using tf bidrectional dynamic rnn.  Using dynamic rnn even though 
-our sequence length is static (12 months) becuase tf dynamic rnn is more flexible for data 
-martialing
-
-
+tests with batches from segreaget test data set
+prints many graphs
+graph code needs refactoring
 
 copyright 2019 Nelson 'Buck' Smith
 
