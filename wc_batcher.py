@@ -11,6 +11,7 @@ import gt_utils as gtu
 read geotiff files and generate a batch of examples
 
 gtiff profile data
+dataset name, feature, dtype, no data
 wc precipitation int16  no data  -32768
 wc temp tavg     float32  nodat -3.4e+38
 wc srad          uint16  nodata 65536
@@ -19,7 +20,7 @@ glo sol hi      float64  nodata nan
 glo temp     float64  nodata nan
 glo elevation   int16  nodata -32768
 lc   land       unit8   no data 256
-lc legend 0 nota? 10 to 200 land, 210 water, 200 snow ice, 255 nodata?
+lc legend 0 nodata? 10 to 200 land, 210 water, 220 snow ice, 255 nodata?
 
 Version 2 batcher corrects errors in prec scaling and bad data filters 
 and adds annual wind value to nn_features
