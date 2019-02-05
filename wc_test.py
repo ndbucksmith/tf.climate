@@ -28,17 +28,17 @@ params['f_width'] = 12
 
 params['learn_rate'] = 0.05
 params['init_stddev'] = 0.05
-params['take'] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16, 17, 18]
+params['take'] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16, 17, 18, 19]
 take = params['take']
 params['x_size'] = len(params['take'])
-params['cell_size'] = 96
-params['rxin_size'] = 22  # wcs + h1h + lwi + el
+params['cell_size'] = 64
+params['rxin_size'] = 23  # wcs + h1h + lwi + el
 pstr = "channels:: "
 for idx in range(len(params['take'])):
   pstr += wcb.nn_features[take[idx]]
   pstr += ', '
 print(pstr)
-
+pst()
 sess = tf.Session()
 
 rmdl = gtm.climaRNN(1, sess, params, bTrain=False)
@@ -47,7 +47,7 @@ sess.run(init_op)
 
 #tf.reset_default_graph()
 
-rmdl.restore('mdls/climarnn_1525.ckpt')
+rmdl.restore('mdls/climarnn_644.ckpt')
 tvars = tf.trainable_variables()
 tvars_vals = sess.run(tvars)
 
@@ -64,12 +64,12 @@ height = 0.9
 
 for mcx in range(1):
 
-  for tx in range(20):
+  for tx in range(5):
 
     if False:
       ins, trus = gtb.get_batch(params['batch_size'], True)
     else:
-      with open('wc_bs/wcb_' + str(tx) + '.pkl', 'r') as fi:
+      with open('wc_v2test/wcb_' + str(tx) + '.pkl', 'r') as fi:
         dc = pickle.load(fi)
         ins = dc['ins']
         app = []
@@ -101,7 +101,7 @@ for mcx in range(1):
     overall_errs = np.mean(errs, axis=0)
     print('errs mean, max, min, std, plus overall_errs mean, max min')
     gtu.arprint([tx, errs.mean(), errs.max(), errs.min(), errs.std(),\
-                  overall_errs.mean(), overall_errs.max(), overall_errs.min()])
+                  overall_errs.mean(), overall_errs.max(), overall_errs.min(), sq_errs.mean()])
     
     for bx in range(b_size):
       if ins[bx,1] > 30.0 and ploterrs:
@@ -116,15 +116,17 @@ for mcx in range(1):
    # pst()
     for mx in range(12):
       badbx = np.argmax(errs[mx])
-      gtu.arprint(ins[badbx,0:7]+ errs[mx,badbx])
+ #     gtu.arprint(ins[badbx,0:7]+ errs[mx,badbx])
       badbx = np.argmin(sq_errs[mx])
-      gtu.arprint(ins[badbx,0:7]+ errs[mx,badbx])
+#      gtu.arprint(ins[badbx,0:7]+ errs[mx,badbx])
 
     #add some wiggle and check the jiggle.  
     watts = 3.7
   #  gtu.arprint(feed[rmdl.xin][0,0:4,18])
     feed[rmdl.xin][:,:,1] = feed[rmdl.xin][:,:,1] + watts
-    feed[rmdl.xin][:,:,18] = feed[rmdl.xin][:,:,18] + (watts*80.0)
+    feed[rmdl.xin][:,:,2] = feed[rmdl.xin][:,:,2] + watts
+    feed[rmdl.xin][:,:,7] = feed[rmdl.xin][:,:,7] + (watts*75.0)
+    feed[rmdl.xin][:,:,19] = feed[rmdl.xin][:,:,19] + (watts*75.0)
   #  gtu.arprint(feed[rmdl.xin][0,0:4,18])    
     # get temperature estimates with extra power added in
     d_sq_errs, d_ests, d_yt   = sess.run(fetch, feed)

@@ -9,6 +9,7 @@ import tensorflow as tf
 import gt_utils as gtu
 import gt_batcher as gtb
 import wc_batcher as wcb
+pst = pdb.set_trace
 
 """
 tensorflow models to predict temperature as a function of solar power, toa power, elevation
@@ -185,12 +186,22 @@ class climaRNN():
   def __init__(self, _years, sess, params, bTrain=True):
     cell_size = params['cell_size']; self.cell_size = cell_size 
     xin_size = params['rxin_size']; self.xin_size = xin_size
+    b_size = params['batch_size']
     y_size = 1
     self.sess = sess
   #  self.cell_fw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size, name='fwd_cell') 
  #   self.cell_bw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size, name='bwd_cell')
-    self.cell_fw =  tf.nn.rnn_cell.GRUCell(num_units=self.cell_size, name='fwd_cell') 
-    self.cell_bw =  tf.nn.rnn_cell.GRUCell(num_units=self.cell_size, name='bwd_cell')
+    self.fw_init =  tf.get_variable('fwd_init', None, tf.float32, tf.zeros(cell_size))
+    self.bw_init =  tf.get_variable('bwd_init', None, tf.float32, tf.zeros(cell_size))
+    rnn_init_fwd = []; rnn_init_bwd = [];
+    for ix in range(b_size):
+      rnn_init_fwd.append(self.fw_init)
+      rnn_init_bwd.append(self.bw_init)
+#  tf.Tensor &apos;GRUCellZeroState/zeros:0&apos; shape=(400, 64) dtype=float32 
+    rnn_init_fwd = tf.stack(rnn_init_fwd)
+    rnn_init_bwd = tf.stack(rnn_init_bwd)
+    self.cell_fw =  tf.nn.rnn_cell.GRUCell(num_units=cell_size, name='fwd_cell') 
+    self.cell_bw =  tf.nn.rnn_cell.GRUCell(num_units=cell_size, name='bwd_cell')  
     self.xin = tf.placeholder(tf.float32, (None, 12*_years,  xin_size), name='rnn_xin')
     self.norms =  tf.placeholder(tf.float32, (xin_size), name='rnx_norms')
     self.xnorms = tf.divide(self.xin, self.norms)
@@ -198,9 +209,11 @@ class climaRNN():
                   self.cell_fw,
                   self.cell_bw,
                   self.xnorms,
+                  initial_state_fw=rnn_init_fwd,
+                  initial_state_bw=rnn_init_bwd,                                                     
                   dtype=tf.float32)
     #default is both states (fw and bw) init to zeros
-    
+ 
     rnn_wy = tf.get_variable('rnn_wy', None, tf.float32, tf.random_normal(
                                [(cell_size*2) + xin_size, y_size],\
                                stddev=0.01))

@@ -50,9 +50,13 @@ sess.run(init_op)
 
   # loop for trying large number of model reinits
   # or for multiple runs thru set of training batches
-for mcx in range(2):  
-  for tx in range(file_ct):
+for mcx in range(20):  
+  for tx_ in range(file_ct):
     start_t = time.time()
+    if mcx == 0:
+      tx = tx_
+    else:
+      tx = np.random.randint(0, file_ct)
     if False:
       ins, trus = gtb.get_batch(params['batch_size'], True)
     else:
@@ -79,11 +83,11 @@ for mcx in range(2):
   if errs.mean() < 80.0:
     pass # pdb.set_trace()
 
-#rmdl.save('mdls/climarnn_', tx)
+rmdl.save('mdls/climarnn_', file_ct)
 tvars = tf.trainable_variables()
 tvars_vals = sess.run(tvars)
 
-if False:
+if True:
   for var, val in zip(tvars, tvars_vals):
     print(var.name,var.shape)
 
