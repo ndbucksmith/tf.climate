@@ -42,7 +42,7 @@ All models are wrong, some models are useful. For the purpose of determining cli
 |-----|-----------|
 |NN       | 100   |
 |Artisanal| 7-10  |
-|RNN      |  2-7 |
+|RNN      |  1-3 |
 
 I was surprised at the awful performance of the pure neural net. I wanted additional features that  global solar does not have like precipitation, wind and surface type, i.e. land, water, or ice. The wc data was monthly so that led naturally to use  of a recurrent neural net, which is now very close to performance goal of less than 2 degrees C MSE.
 Errors are largest in the temperate part of the northern hemisphere.  An obvious step to improve accuracy would be to add RNNS for northenr and southern hemisphere or maybe 4 RNNs for North-South Tropics-Temperate.
