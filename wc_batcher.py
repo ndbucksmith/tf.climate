@@ -35,10 +35,10 @@ nn_features = ['lon', 'lat', 'vis_down', 'toa_pwr', 'elev', 'barop', 'pwr_ratio'
 nn_feat_len = len(nn_features)
 nn_norms = [1.0, 90.0, 310.0,  415.0, 7000.0, 760.0, 1.0, 600.0, 25000.0, \
               1.0, 1.0, 1.0,  \
-              1.0, 1.0, 50.0, 1000.0, 400.0, 400.0, 400.0, 11.0]
+              1.0, 1.0, 50.0, 4000.0, 400.0, 400.0, 400.0, 10.0]
 assert len(nn_norms) == nn_feat_len
 rnn_features =['srad','prec','toa','wind']
-rnn_norms = [32768.0, 2325.0, 500.0, 11.0]
+rnn_norms = [32768.0, 2400.0, 500.0, 11.0]
 rnn_feat_len = 4
 
 #to build wc data file names

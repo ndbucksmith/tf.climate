@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import rasterio as rio
-import matplotlib as plt
+import matplotlib.pyplot as plt
 import pickle
 import pdb
 import math
@@ -50,7 +50,8 @@ sess.run(init_op)
 
   # loop for trying large number of model reinits
   # or for multiple runs thru set of training batches
-for mcx in range(20):  
+train_history = []
+for mcx in range(3):  
   for tx_ in range(file_ct):
     start_t = time.time()
     if mcx == 0:
@@ -69,19 +70,19 @@ for mcx in range(20):
         rn_trus =  dc['rnn_trus']
         trus = dc['trus']
     #pdb.set_trace()
-    feed = rmdl.bld_multiyearfeed(1, ins, rsqs, rn_trus)
+    feed = rmdl.bld_multiyearfeed(1, ins, rsqs, rn_trus, trus)
 
-    fetch = [rmdl.lossers, rmdl.hypos, rmdl.ts, rmdl.y_trues, ]
+    fetch = [rmdl.lossers, rmdl.hypos, rmdl.ts, rmdl.y_trues, rmdl.meta_ts, rmdl.meta_losser ]
  
-    errs, ests, step, yt   = sess.run(fetch, feed)
+    errs, ests, step, yt, mts, met_err   = sess.run(fetch, feed)
     errs =np.array(errs)
+    train_history.append( [errs.mean(), errs.max(), errs.min(), met_err] )
     if tx % 100 == 99:
       pass #pdb.set_trace()
-    gtu.arprint([tx, errs.mean(), errs.max(), errs.min(),  ests[6].mean(), ests[6].min(), ests[6].max(), \
-                 yt[6].mean(), yt[6].min(), yt[6].max()])
+    gtu.arprint([tx, errs.mean(), errs.max(), errs.min(), met_err])
 
-  if errs.mean() < 80.0:
-    pass # pdb.set_trace()
+  if errs.mean() < 1.0:
+    print('whoop') #pass # pdb.set_trace()
 
 rmdl.save('mdls/climarnn_', file_ct)
 tvars = tf.trainable_variables()
@@ -91,4 +92,10 @@ if True:
   for var, val in zip(tvars, tvars_vals):
     print(var.name,var.shape)
 
-  
+train_history = np.array(train_history)
+fig, axe  = plt.subplots(1)
+fig.suptitle('error vs.iteration')
+fig.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
+axe.scatter(range(len(train_history)),train_history[:,0], c='k', s=1)
+axe.scatter(range(len(train_history)),train_history[:,3], c='g', s=1)
+plt.show()

@@ -9,6 +9,8 @@ import tensorflow as tf
 import gt_utils as gtu
 import gt_batcher as gtb
 import wc_batcher as wcb
+from tensorflow.keras import models
+from tensorflow.keras import layers
 pst = pdb.set_trace
 
 """
@@ -18,7 +20,7 @@ tensorflow models to predict temperature as a function of solar power, toa power
 
 copyright 2019 Nelson 'Buck' Smith
 """
-
+metaTrain = True
 
 
 class ClimaModel:
@@ -218,27 +220,47 @@ class climaRNN():
                                [(cell_size*2) + xin_size, y_size],\
                                stddev=0.01))
     rnn_by = tf.get_variable('rnn_by', None, tf.float32, tf.zeros(y_size))
-    hypos = []; losses = []; y_trues = []; lossers = [];
+    hypos = []; losses = []; y_trues = []; lossers = []; h_norms = []
+    self.temp_norms = tf.constant(40.0, dtype=tf.float32, shape=[1])
     outs = tf.concat((fwouts, bwouts), axis=2)
     for ix in range(12*_years):
       y_trues.append(tf.placeholder(tf.float32, (None,  y_size), name='rnn_yt'+str(ix)))
       hypos.append(tf.add(rnn_by, tf.matmul(  \
                           tf.concat((outs[:,ix,:], self.xnorms[:,ix,:]), axis=1), \
                           rnn_wy), name='h_'+str(ix)))
-      losses.append(tf.square(y_trues[ix] - hypos[ix]))
-      lossers.append(tf.reduce_mean(losses[ix]))
+      h_norms.append(tf.divide(hypos[ix], self.temp_norms))
+      losses.append(tf.square(y_trues[ix] - hypos[ix], name='losses'))
+      lossers.append(tf.reduce_mean(losses[ix], name='lossers'))
     self.hypos = hypos; self.losses = losses; self.lossers = lossers;
     self.y_trues = y_trues
     loss = tf.add_n(losses); self.loss = loss;
+    losser = tf.add_n(lossers); self.losser = losser;
     if bTrain:
       global_step = tf.Variable(0, trainable=False)
       start_learnrate = params['learn_rate']                          
       self.learning_rate = tf.train.exponential_decay(start_learnrate, global_step, 300000, 0.9, staircase=True)
       optimizer = tf.train.AdamOptimizer(self.learning_rate)
       #optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
-      self.ts = optimizer.minimize(loss, global_step=global_step)
+      self.rnn_varlist = tf.trainable_variables()
+      self.ts = optimizer.minimize(tf.stack(losses), var_list=self.rnn_varlist, global_step=global_step)
     else:
-      self.ts = None; 
+      self.ts = None;
+    if metaTrain:
+      meta_in = tf.concat((tf.transpose(tf.stack(h_norms))[0], self.xnorms[:,ix,0:19]), axis=1)
+      meta_w1, meta_b1 = weightSet('meta_l1', [31,20])
+      meta_o1 = tf.nn.tanh(tf.add(tf.matmul(meta_in, meta_w1), meta_b1))
+      meta_w2, meta_b2 = weightSet('meta_l2', [20,1])
+      self.meta_h  = tf.add(meta_b2,  tf.matmul(meta_o1, meta_w2))
+      self.meta_yt = tf.placeholder(tf.float32, (None,  y_size), name='meta_yt')
+      self.meta_loss = tf.square(self.meta_h-self.meta_yt, name='meta_loss')
+      self.meta_losser = tf.reduce_mean(self.meta_loss, name='meta_losser')
+    if metaTrain and bTrain:
+      meta_globstep = tf.Variable(0, trainable=False)
+      meta_learn =  tf.train.exponential_decay(start_learnrate, meta_globstep, 300000, 0.9, staircase=True)
+      meta_optim = tf.train.AdamOptimizer(meta_learn)
+      self.meta_ts  = meta_optim.minimize(self.meta_loss, var_list=[meta_w1, meta_b1, meta_w2, meta_b2], \
+                                          global_step=meta_globstep)
+                       
     #pdb.set_trace()
     self.vars_to_save=(v.name for v in tf.trainable_variables())
     self.vl = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
@@ -266,7 +288,7 @@ class climaRNN():
     #pdb.set_trace()
     return fd
 
-  def bld_multiyearfeed(self, yrs, ins, rins, rn_trus):
+  def bld_multiyearfeed(self, yrs, ins, rins, rn_trus, me_trus):
     fd ={}
     static_ins = ins[:,1:]  #shape batch, 20 odd
     static_norms = wcb.nn_norms[1:]  #shape 20 od
@@ -287,6 +309,7 @@ class climaRNN():
     full_normset = np.concatenate((static_norms, wcb.rnn_norms))
     fd[self.xin] = full_rinset
     fd[self.norms] = full_normset
+    fd[self.meta_yt] = np.reshape(np.array(me_trus), (-1,1))
     #pdb.set_trace()
     return fd
 
@@ -311,6 +334,24 @@ class climaRNN():
     for var, val in zip(tvar, tvar_vals):
       print(var.name, var.shape)
     print(val)
+
+def weightSet(name, shape):
+  wt = tf.get_variable(name+'_wt', None, tf.float32, tf.random_normal(shape, stddev=0.01))
+  bi = tf.get_variable(name+'_bias', None, tf.float32, tf.zeros(shape[-1]))
+  return wt, bi
+
+class  climaLayer():
+  def __init__(self, name, x, width):
+    
+    in_size = x.shape[-1].value
+    lay_wt = tf.get_variable('wt_' + name, [in_size, width], tf.float32,  \
+                              tf.random_normal([in_size,width], stddev=0.01))
+    lay_bi = tf.get_variable('bi_'+name, None, tf.float32, tf.zeros(width))
+    lay_op =  (x * W) + b
+    lay_act = tf.relu(lay_op, name='lay_out_'+name)
+    return lay_out
+
+    
 """
 print(fwouts)
 Tensor("bidirectional_rnn/fw/fw/transpose_1:0", shape=(?, 12, 32), dtype=float32)
