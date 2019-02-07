@@ -37,7 +37,9 @@ There are three models
 
 ### metrics, data, and models
 
-All models are wrong, some models are useful. For the purpose of determining climate sensitivity a validated model with less than 2.0 degrees C of mean squared error (MSE) is sure to be useful. The meta NN architecture is now at 1 degree C or better. [map of 13200 test points](mse_lt_1c.png)
+All models are wrong, some models are useful. For the purpose of determining climate sensitivity a validated model with less than 2.0 degrees C of mean squared error (MSE) is sure to be useful. The meta NN architecture is now at 1 degree C or better.
+
+[map of 13200 test points](mse_lt_1c.png)
 
 |Model| MSE degree C|
 |-----|-----------|
