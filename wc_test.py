@@ -10,6 +10,7 @@ import tensorflow as tf
 import gt_utils as gtu
 import gt_model as gtm
 import wc_batcher as wcb
+import os
 pst = pdb.set_trace
 
 """
@@ -21,6 +22,9 @@ copyright 2019 Nelson 'Buck' Smith
 
 """
 
+
+target = 'wc_v2test'
+file_ct = len(os.listdir(target)) 
 params = {}
 params['batch_size'] = 400
 b_size = params['batch_size']
@@ -47,7 +51,7 @@ sess.run(init_op)
 
 #tf.reset_default_graph()
 
-rmdl.restore('mdls/climarnn_1157.ckpt')
+rmdl.restore('mdls/climarnn_1318.ckpt')
 tvars = tf.trainable_variables()
 tvars_vals = sess.run(tvars)
 
@@ -64,7 +68,7 @@ height = 0.9
 
 for mcx in range(1):
 
-  for tx in range(10):
+  for tx in range(file_ct):
 
     if False:
       ins, trus = gtb.get_batch(params['batch_size'], True)
@@ -77,7 +81,7 @@ for mcx in range(1):
         wc_trus = dc['ec_tru']  #alternative verion of reality, man
         rn_trus =  dc['rnn_trus']
         trus = dc['trus']
-    feed = rmdl.bld_multiyearfeed(1, ins, rsqs, rn_trus, trus)
+    feed = rmdl.bld_multiyearfeed(1, ins, rsqs, rn_trus, wc_trus)
     #feed = rmdl.bld_feed(ins, rsqs, rn_trus)
 
     fetch = [rmdl.lossers, rmdl.hypos,  rmdl.y_trues, rmdl.meta_h, rmdl.meta_loss, \
@@ -129,8 +133,7 @@ for mcx in range(1):
 #      gtu.arprint(ins[badbx,0:7]+ errs[mx,badbx])
 
     #add some wiggle and check the jiggle.  
-    watts = 3.7
-
+    watts = 20.0
     feed[rmdl.xin][:,:,1] = feed[rmdl.xin][:,:,1] + watts
    # feed[rmdl.xin][:,:,2] = feed[rmdl.xin][:,:,2] + watts # toa solar
     feed[rmdl.xin][:,:,7] = feed[rmdl.xin][:,:,7] + (watts*75.0)
@@ -154,71 +157,69 @@ for mcx in range(1):
 
 test_map = np.array(test_map)
 print('test map dataset shape, max and min sensitivty')
-print(test_map.shape, test_map[:,32].max(), test_map[:,32].min())
-sen_histo = np.histogram(test_map[:,34], [-1.0,-0.5,-0.4,-0.3,-0.2,-0.1,0.0,0.1,0.2,0.3,0.4] )
-print(sen_histo)
+print(test_map.shape, test_map[:,34].max(), test_map[:,34].min())
+sen_histo = np.histogram(test_map[:,34] )
+print('histo')
+print(zip(sen_histo[0], sen_histo[1][0:-1]))
+
 fig21, axe21 = plt.subplots(1)
 fig21.suptitle('sensitivity distribution')
 axe21.bar(range(10), sen_histo[0], align='center', )
-         # tick=['-0.5','-0.35','-0.25','-0.15','-0.05','0.05','0.15','0.25','0.35','0.7'])
-axe21.set_xticklabels(['-0.5','-0.35','-0.25','-0.05','0.05','0.15','0.25','0.25','0.35','0.45','0.7'])
+ticklbls = []
+for ix in range(len(sen_histo[1][0:-1])):
+  ticklbls.append( str(round(sen_histo[1][ix+1], 3)))
+
+axe21.set_xticklabels(ticklbls)
+
+# [-1.0,-0.5,-0.4,-0.3,-0.2,-0.1,0.0,0.1,0.2,0.3,0.4]
+
+sen_normalize = matplotlib.colors.Normalize(vmin=-1.0, vmax=1.0)
+err_normalize = matplotlib.colors.Normalize(vmin=-3.0, vmax=3.0)
 
 
+def mapper(x,y,z, cmp, name, nrm):
+  fi, ax = plt.subplots(1)
+  fi.suptitle(name)  #'sensitivity map from test data 1 deg C mse'
+  fi.subplots_adjust(top=0.95, bottom=0.01, left=0.1, right=0.99)
+  ax.scatter(x, y, c=z, s=1, cmap=cmp, norm=nrm)
+  cax, _ = matplotlib.colorbar.make_axes(ax)
+  cbar = matplotlib.colorbar.ColorbarBase(cax, norm=nrm,  cmap=cmp)
+  return fi, ax
 
-normalize = matplotlib.colors.Normalize(vmin=test_map[:,32].min(), vmax=test_map[:,32].max())
-fig2, axe2 = plt.subplots(1)
-fig2.suptitle('sensitivity map from test data')
-fig2.subplots_adjust(top=0.95, bottom=0.01, left=0.1, right=0.99)
-axe2.scatter(test_map[:,0], test_map[:,1], c = test_map[:,32], s=1, cmap='RdBu')
-cax, _ = matplotlib.colorbar.make_axes(axe2)
-cbar = matplotlib.colorbar.ColorbarBase(cax, norm=normalize, cmap='RdBu')
-
-normalize3 = matplotlib.colors.Normalize(vmin=test_map[:,33].min(), vmax=test_map[:,33].max())
-fig3, axe3 = plt.subplots(1)
-fig3.suptitle('overall error map from test data')
-fig3.subplots_adjust(top=0.95, bottom=0.01, left=0.1, right=0.99)
-axe3.scatter(test_map[:,0], test_map[:,1], c = test_map[:,33], s=1, cmap='RdBu')
-cax3, _3 = matplotlib.colorbar.make_axes(axe3)
-cba3 = matplotlib.colorbar.ColorbarBase(cax3, norm=normalize3, cmap='RdBu')
+def scat(x, y, z, cmp, name, nrm):
+  fi_, ax_ = plt.subplots(1)
+  fi_.suptitle(name)
+  fi_.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
+  ax_.scatter(x, y, s=1, c=z, cmap=cmp, norm=nrm)
+  return fi_, ax_
 
 
-#normalize3 = matplotlib.colors.Normalize(vmin=test_map[:,17].min(), vmax=test_map[:,17].max())
-fig4, axe4 = plt.subplots(1)
-fig4.suptitle('sensitivity v elevation')
-fig4.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
-axe4.scatter(test_map[:,4], test_map[:,32], s=1, c= test_map[:,32], cmap='RdBu')
+f3, a3 = mapper(test_map[:,0], test_map[:,1], test_map[:,33], 'coolwarm', \
+                'overall error map from test data 1 deg mse', \
+                err_normalize)
 
-#normalize3 = matplotlib.colors.Normalize(vmin=test_map[:,17].min(), vmax=test_map[:,17].max())
-fig5, axe5 = plt.subplots(1)
-fig5.suptitle('sensitivity v latitude')
-fig5.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
-axe5.scatter(test_map[:,1], test_map[:,32], s=1, c= test_map[:,32], cmap='RdBu')
+f2, a2 = mapper(test_map[:,0], test_map[:,1], test_map[:,34], 'coolwarm', \
+              'sensitivity map from test data 1 deg C mse', \
+                sen_normalize)
+
+f4, a4 = scat(test_map[:,4], test_map[:,34], test_map[:,34], 'RdBu', \
+              'sensitivity v elevation', sen_normalize)
+
+f5, a5 = scat(test_map[:,1], test_map[:,34], test_map[:,34], 'RdBu', \
+              'sensitivity v latutude', sen_normalize)
 
 if False:
-  fig6, axe6 = plt.subplots(1)
-  fig6.suptitle('sensitivity v surface solar power')
-  fig6.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
-  axe6.scatter(test_map[:,2], test_map[:,32], s=1, c= test_map[:,32], cmap='RdBu')
+  f6, a6 =  scat(test_map[:,2], test_map[:,32], test_map[:,32], 'RdBu', \
+              'sensitivity v surf sol', sen_normalize)
+if True:
+  f7, a7 =  scat(test_map[:,32], test_map[:,33], 'k', None, \
+                 'sensitivity v error', None)
 
+f8, a8 = scat(test_map[:,1], test_map[:,33], test_map[:,33], 'RdBu', \
+              'error v latutude', err_normalize)
 
-
-if False:
-  fig7, axe7 = plt.subplots(1)
-  fig7.suptitle('sensitivity v toa solar')
-  fig7.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
-  axe7.scatter(test_map[:,3], test_map[:,32], s=1, c= test_map[:,32], camp='RdBu')
-
-
-#normalize3 = matplotlib.colors.Normalize(vmin=test_map[:,17].min(), vmax=test_map[:,17].max())
-fig8, axe8 = plt.subplots(1)
-fig8.suptitle('error v latitude')
-fig8.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
-axe8.scatter(test_map[:,1], test_map[:,33], s=1, c= test_map[:,33], cmap='RdBu')
-
-fig9, axe9 = plt.subplots(1)
-fig9.suptitle('error v elevation')
-fig9.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
-axe9.scatter(test_map[:,4], test_map[:,33], s=1, c=test_map[:,33], cmap='RdBu')
+f9, a9 = scat(test_map[:,4], test_map[:,33], test_map[:,33], 'RdBu', \
+              'error v elevation', err_normalize)
 
 plt.show()
 
