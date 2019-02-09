@@ -51,7 +51,7 @@ sess.run(init_op)
 
 #tf.reset_default_graph()
 
-rmdl.restore('mdls/climarnn_1318.ckpt')
+rmdl.restore('mdls/climarnn_1657.ckpt')
 tvars = tf.trainable_variables()
 tvars_vals = sess.run(tvars)
 
@@ -65,7 +65,7 @@ left = 0.05
 bottom = 0.05 
 width = 0.9
 height = 0.9
-
+mm_errs = []
 for mcx in range(1):
 
   for tx in range(file_ct):
@@ -111,7 +111,9 @@ for mcx in range(1):
     gtu.arprint([tx, errs.mean(), errs.max(), errs.min(), errs.std(),\
                   overall_errs.mean(), overall_errs.max(), overall_errs.min(), sq_errs.mean()])
     print('meta model errs mean, min, max')
-    gtu.arprint([meta_errs.mean(), meta_errs.max(), meta_errs.min(), meta_sqerrs.mean()])
+    mme = [meta_errs.mean(), meta_errs.max(), meta_errs.min(), meta_sqerrs.mean()]
+    gtu.arprint(mme)
+    mm_errs.append(mme)
     
 
     
@@ -176,6 +178,25 @@ axe21.set_xticklabels(ticklbls)
 sen_normalize = matplotlib.colors.Normalize(vmin=-1.0, vmax=1.0)
 err_normalize = matplotlib.colors.Normalize(vmin=-3.0, vmax=3.0)
 
+fig, axs =plt.subplots(2,1)
+clust_data = np.random.random((10,3))
+collabel=("col 1", "col 2", "col 3")
+axs[0].axis('tight')
+axs[0].axis('off')
+the_table = axs[0].table(cellText=clust_data,colLabels=collabel,loc='center')
+
+axs[1].plot(clust_data[:,0],clust_data[:,1])
+
+def tabler(ctxt, name, colhdrs):
+  fi, ax = plt.subplots(1)
+  fi.suptitle(name)
+  fi.subplots_adjust(top=0.95, bottom=0.01, left=0.1, right=0.99)
+  tbl = ax.table(cellText=ctxt, colLabels=colhdrs, loc='center')
+  ax.axis('tight')
+  ax.axis('off')
+  #ax[0].xticks([])
+  #ax[0].yticks([])
+  return fi, ax
 
 def mapper(x,y,z, cmp, name, nrm):
   fi, ax = plt.subplots(1)
@@ -192,6 +213,24 @@ def scat(x, y, z, cmp, name, nrm):
   fi_.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
   ax_.scatter(x, y, s=1, c=z, cmap=cmp, norm=nrm)
   return fi_, ax_
+
+def plotter(plts, name):
+  fi_, ax_ = plt.subplots(1)
+  fi_.suptitle(name)
+  for px in range(len(plts)):
+    ax_.plot(plts[px])
+  return fi_, ax_
+
+def addnote(fig):
+  fig.text(0.02, 0.02, str(file_ct) + ' batches of 400 examples', transform=plt.gcf().transFigure)
+  return fig         
+    
+
+chds = ['mean', 'max', 'min','mse']
+mm_errs = np.transpose(np.array(mm_errs))
+
+ft1, at1 = plotter(mm_errs, 'multi model errors - mean, max, min, mse')
+ft1 = addnote(ft1)
 
 
 f3, a3 = mapper(test_map[:,0], test_map[:,1], test_map[:,33], 'coolwarm', \
