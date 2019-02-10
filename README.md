@@ -43,7 +43,7 @@ All models are wrong, some models are useful. For the purpose of determining cli
 
 The graphs of errs for meta model maybe gives a better idea of model accuracy
 
-[meta model errs by batch](metamodel_errs.png)
+![meta model errs by batch](metamodel_errs.png)
 
 |Model| MSE degree C|
 |-----|-----------|
