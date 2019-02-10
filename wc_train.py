@@ -10,6 +10,7 @@ import gt_utils as gtu
 import gt_model as gtm
 import wc_batcher as wcb
 import os
+import json
 pst = pdb.set_trace
 
 """
@@ -27,14 +28,14 @@ params = {}
 params['batch_size'] = 400
 b_size = params['batch_size']
 params['f_width'] = 12
-
+params['mdl_path'] = 'mdls/take2_10'
 params['learn_rate'] = 0.05
 params['init_stddev'] = 0.05
-params['take'] = [2,3,4,5,6,7,8,9,10,11,12,13]
+params['take'] = [2,3,4,5,6,7,8,9,10,11,12,13,14,15]
 take = params['take']
 params['x_size'] = len(params['take'])
 params['cell_size'] =  64
-params['rxin_size'] = 23  # wcs + h1h + lwi + el
+params['rxin_size'] = len(take) + 4  # wcs + h1h + lwi + el
 pstr = "traing with: "
 for idx in range(len(params['take'])):
   pstr += wcb.nn_features[take[idx]]
@@ -70,7 +71,7 @@ for mcx in range(3):
         rn_trus =  dc['rnn_trus']
         trus = dc['trus']
     #pdb.set_trace()
-    feed = rmdl.bld_multiyearfeed(1, ins, rsqs, rn_trus, trus)
+    feed = rmdl.bld_multiyearfeed(1, ins, rsqs, rn_trus, wc_trus)
 
     fetch = [rmdl.lossers, rmdl.hypos, rmdl.ts, rmdl.y_trues, rmdl.meta_ts, rmdl.meta_losser ]
  
@@ -84,9 +85,11 @@ for mcx in range(3):
   if errs.mean() < 1.0:
     print('whoop') #pass # pdb.set_trace()
 
-rmdl.save('mdls/climarnn_', file_ct)
+rmdl.save(params['mdl_path'] +'/climarnn_', file_ct)
 tvars = tf.trainable_variables()
 tvars_vals = sess.run(tvars)
+with open(params['mdl_path'] + '/params.json', 'w') as fo:
+  json.dump(params, fo)          
 
 if True:
   for var, val in zip(tvars, tvars_vals):

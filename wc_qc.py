@@ -47,7 +47,7 @@ file_ct = len(os.listdir(target))
 maxes = []
 for mcx in range(1):
 
-  for tx in range(1526):
+  for tx in range(file_ct):
     start_t = time.time()
     if False:
       ins, trus = wcb.get_batch(params['batch_size'], True)

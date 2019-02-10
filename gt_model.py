@@ -22,120 +22,6 @@ copyright 2019 Nelson 'Buck' Smith
 """
 metaTrain = True
 
-
-class ClimaModel:
-  def __init__(self, params, sess, art, bTrain=True):
-    x_size = params['x_size']
-    y_size = 1
-    f_width = params['f_width']
-    istd = params['init_stddev']
-    self.activation = tf.nn.relu  #tf.tanh  #tf.nn.relu #tf.sigmoid
-    self.filters = {}
-    self.batch_size = params['batch_size']
-    self.params = params
-    self.sess = sess 
-    self.x = tf.placeholder(tf.float32, (None, x_size), name='x')
-    self.norms = tf.placeholder(tf.float32, (x_size), name='x_norms')
-    self.xn = tf.divide(self.x, self.norms)
-    self.y_true = tf.placeholder(tf.float32, (None), name='y_true')
-   # self.xf1 = self.filter(self.xn, f_width=f_width, name='xf1')
-   # self.xf2 = self.filter(self.xf1, f_width=f_width, name='xf2')
-
-    #self.xf2_ = tf.concat(self.xf2, art)
-    wy1 = tf.get_variable('wy', None, tf.float32, tf.random_normal([f_width, y_size], stddev=istd))
-    by1 = tf.get_variable('by', None, tf.float32, tf.random_normal([y_size], stddev=0.01))
-    self.hnn = tf.add(tf.matmul(self.xn, wy1), by1)    
-    resh = tf.reshape(art, [-1, 1])
-    #pdb.set_trace()
-    self.h = self.hnn #tf.add(self.hnn, resh)
-    meantemp = tf.fill(tf.shape(self.y_true), 14.6)
-    lossfactor = tf.fill(tf.shape(self.y_true), 250.0)
-    min_wt = tf.fill(tf.shape(self.y_true), 0.1)
-
-    self.losswts = tf.add(tf.divide(tf.square(self.y_true - meantemp), lossfactor), min_wt)
-    self.loss = tf.square(self.y_true - self.h)
-    self.wtd_loss = tf.multiply(self.loss, self.losswts)
-    self.losser = tf.reduce_mean(self.loss)
-    self.wtd_losser =  tf.reduce_mean(self.wtd_loss)
-    if bTrain:
-      global_step = tf.Variable(0, trainable=False)
-      start_learnrate = params['learn_rate']                          
-      self.learning_rate = tf.train.exponential_decay(start_learnrate, global_step, 300000, 0.9, staircase=True)
-      #optimizer = tf.train.AdamOptimizer(self.learning_rate)
-      optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
-      self.ts = optimizer.minimize(self.wtd_loss, global_step=global_step)
-    else:
-      self.ts = None
-    #pdb.set_trace()
-    vars_to_save=(v.name for v in tf.trainable_variables())
-    self.saver=tf.train.Saver(var_list=tf.trainable_variables(), max_to_keep=4)
- 
-                            
-  def losser_val(es, ts):
-    squs = []
-    for ix in range(len(es)):
-      squs.append((es[ix] -ts[ix])**2)
-    squs = np.array(squs)
-    return squs, squs.mean()
-
-  def reup(self):
-    self.sess.run(tf.global_variables_initializer())      
-                  
-    
-  def filter(self, x, f_width=-1, y_width=-1, residual=False, name=''):
-    if name in self.filters:
-      var_reuse = True
-    else:
-      var_reuse = False
-      self.filters[name] = name
-    istd = self.params['init_stddev']
-    with tf.variable_scope(name+'filter', reuse=var_reuse):
-      in_size = int(x.get_shape()[-1])
-      if f_width == -1:
-          f_width = int(x.get_shape()[-1])
-          
-      w1 = tf.get_variable(name+'_filter_w1', None, tf.float32, tf.random_normal([in_size, f_width], stddev=istd))
-      b1 = tf.get_variable(name+'_filter_b1', None, tf.float32, tf.random_normal([f_width], stddev=0.01))
-      f1 = tf.add(b1, tf.matmul(x, w1))
-      out1 = self.activation(f1, name=name+'out1')
-                           
-      w2 = tf.get_variable(name+'_filter_w2', None, tf.float32, tf.random_normal([f_width, f_width], stddev=istd))
-      b2 = tf.get_variable(name+'_filter_b2', None, tf.float32, tf.random_normal([f_width], stddev=0.01))
-      f2 = tf.add(b2, tf.matmul(out1, w2))
-      out2 = self.activation(f2, name=name+'out2')
-
-      if residual == False:
-        f_output = out2
-      else:      
-        wr1 = tf.get_variable(name+'_filter_wr1', None, tf.float32, tf.random_normal([f_width, f_width], stddev=istd))
-        br1 = tf.get_variable(name+'_filter_br1', None, tf.float32, tf.random_normal([f_width], stddev=0.01))
-        fr1 = tf.add(br1, tf.matmul(out2, wr1))
-        outr1 = self.activation(f1, name=name+'outr1')
-                           
-        wr2 = tf.get_variable(name+'_filter_wr2', None, tf.float32, tf.random_normal([f_width, f_width], stddev=istd))
-        br2 = tf.get_variable(name+'_filter_br2', None, tf.float32, tf.random_normal([f_width], stddev=0.01))
-        fr2 = tf.add(br2, tf.matmul(outr1, wr2))
-        outr2 = self.activation(fr2, name=name+'out2')
-        f_output = tf.add(out2, outr2)
-
-    return f_output
-
-
-  def bld_feed(self, Ins, Trues):
-    fd = {}
-    fd[self.x] = np.take(Ins, self.params['take'], axis=1)
-    fd[self.norms] = np.take(gtb.feat_norms, self.params['take'], axis=0)       
-    #pdb.set_trace()
-    assert self.params['x_size'] == fd[self.x].shape[-1]
-    fd[self.y_true] = Trues
-    return fd
-
-  def save(self, path, tx):
-    save_path = self.saver(self.sess, path+str(tx)+'ckpt', write_meta_graph=False)
-
-  def restore(self, path):
-    self.save.restore(self.sess, path)
-
 class artisanalModel():
   def __init__(self,sess, params, bTrain=True):
     self.batch_size = params['batch_size']
@@ -190,6 +76,7 @@ class climaRNN():
     xin_size = params['rxin_size']; self.xin_size = xin_size
     b_size = params['batch_size']
     y_size = 1
+    self.params = params
     self.sess = sess
   #  self.cell_fw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size, name='fwd_cell') 
  #   self.cell_bw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size, name='bwd_cell')
@@ -207,10 +94,15 @@ class climaRNN():
     self.xin = tf.placeholder(tf.float32, (None, 12*_years,  xin_size), name='rnn_xin')
     self.norms =  tf.placeholder(tf.float32, (xin_size), name='rnx_norms')
     self.xnorms = tf.divide(self.xin, self.norms)
+    rnn_w1, rnn_b1 = weightSet('rnn_l1', [xin_size,30])
+    rnn_l1 = []
+    for mx in range(12):
+      rnn_l1.append(tf.nn.tanh(tf.add(tf.matmul(self.xnorms[:,mx], rnn_w1), rnn_b1)))
+    self.rnn_l1 = tf.transpose(tf.stack(rnn_l1), perm=[1,0,2])
     (fwouts, bwouts),(fwstate, bwstate) = tf.nn.bidirectional_dynamic_rnn( \
                   self.cell_fw,
                   self.cell_bw,
-                  self.xnorms,
+                  self.rnn_l1,
                   initial_state_fw=rnn_init_fwd,
                   initial_state_bw=rnn_init_bwd,                                                     
                   dtype=tf.float32)
@@ -246,20 +138,23 @@ class climaRNN():
     else:
       self.ts = None;
     if metaTrain:
-      meta_in = tf.concat((tf.transpose(tf.stack(h_norms))[0], self.xnorms[:,ix,0:19]), axis=1)
-      meta_w1, meta_b1 = weightSet('meta_l1', [31,20])
+      meta_in = tf.concat((tf.transpose(tf.stack(h_norms))[0], self.xnorms[:,ix,0:self.xin_size]), axis=1)
+     # pst()
+      meta_w1, meta_b1 = weightSet('meta_l1', [12+self.xin_size,20])
       meta_o1 = tf.nn.tanh(tf.add(tf.matmul(meta_in, meta_w1), meta_b1))
       meta_w2, meta_b2 = weightSet('meta_l2', [20,1])
       self.meta_h  = tf.add(meta_b2,  tf.matmul(meta_o1, meta_w2))
       self.meta_yt = tf.placeholder(tf.float32, (None,  y_size), name='meta_yt')
       self.meta_loss = tf.square(self.meta_h-self.meta_yt, name='meta_loss')
       self.meta_losser = tf.reduce_mean(self.meta_loss, name='meta_losser')
+      self.dodi = tf.gradients(self.meta_h, self.xin, name='gradients_io')
     if metaTrain and bTrain:
       meta_globstep = tf.Variable(0, trainable=False)
       meta_learn =  tf.train.exponential_decay(start_learnrate, meta_globstep, 300000, 0.9, staircase=True)
       meta_optim = tf.train.AdamOptimizer(meta_learn)
       self.meta_ts  = meta_optim.minimize(self.meta_loss, var_list=[meta_w1, meta_b1, meta_w2, meta_b2], \
                                           global_step=meta_globstep)
+
                        
     #pdb.set_trace()
     self.vars_to_save=(v.name for v in tf.trainable_variables())
@@ -290,8 +185,9 @@ class climaRNN():
 
   def bld_multiyearfeed(self, yrs, ins, rins, rn_trus, me_trus):
     fd ={}
-    static_ins = ins[:,1:]  #shape batch, 20 odd
-    static_norms = wcb.nn_norms[1:]  #shape 20 od
+    #static_ins = ins[:,1:] 
+    static_ins =np.take(ins, self.params['take'], axis=1)  #shape batch, 20 odd
+    static_norms = np.take(wcb.nn_norms, self.params['take'])  #shape 20 od
     static_multiyr = []
     rn_trus = np.reshape(np.array(rn_trus), (-1,12,1))
     #pdb.set_trace()

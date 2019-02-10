@@ -11,6 +11,7 @@ import gt_utils as gtu
 import gt_model as gtm
 import wc_batcher as wcb
 import os
+import json
 pst = pdb.set_trace
 
 """
@@ -24,34 +25,88 @@ copyright 2019 Nelson 'Buck' Smith
 
 
 target = 'wc_v2test'
-file_ct = len(os.listdir(target)) 
-params = {}
-params['batch_size'] = 400
-b_size = params['batch_size']
-params['f_width'] = 12
-
-params['learn_rate'] = 0.05
-params['init_stddev'] = 0.05
-params['take'] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16, 17, 18, 19]
-take = params['take']
-params['x_size'] = len(params['take'])
-params['cell_size'] = 64
-params['rxin_size'] = 23  # wcs + h1h + lwi + el
+file_ct = len(os.listdir(target))
+mdl_path = 'mdls/take2_10'
+if True:
+  with open('mdls/take2_10'+'/params.json', 'r') as fi:
+    params = json.load(fi)
+    take = params['take']
+    b_size = params['batch_size']
+else:
+  params = {}
+  params['batch_size'] = 400
+  b_size = params['batch_size']
+  params['f_width'] = 12
+  params['learn_rate'] = 0.05
+  params['init_stddev'] = 0.05
+  params['take'] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16, 17, 18, 19]
+  take = params['take']
+  params['x_size'] = len(params['take'])
+  params['cell_size'] = 64
+  params['rxin_size'] = 23  # wcs + h1h + lwi + el
 pstr = "channels:: "
 for idx in range(len(params['take'])):
   pstr += wcb.nn_features[take[idx]]
   pstr += ', '
 print(pstr)
+wc_start = len(params['take'])
+gs_radx = 0  #index used for wiggle jiggle sensitivity
+wc_radx = 6
+assert wcb.nn_features[take[gs_radx]]  == 'vis_down'
+assert wcb.nn_features[take[wc_radx]]  == 'wc_srad'
+
+def tabler(ctxt, name, colhdrs):
+  fi, ax = plt.subplots(1)
+  fi.suptitle(name)
+  fi.subplots_adjust(top=0.95, bottom=0.01, left=0.1, right=0.99)
+  tbl = ax.table(cellText=ctxt, colLabels=colhdrs, loc='center')
+  ax.axis('tight')
+  ax.axis('off')
+  #ax[0].xticks([])
+  #ax[0].yticks([])
+  return fi, ax
+
+def mapper(x,y,z, cmp, name, nrm):
+  fi, ax = plt.subplots(1)
+  fi.suptitle(name)  #'sensitivity map from test data 1 deg C mse'
+  fi.subplots_adjust(top=0.95, bottom=0.01, left=0.1, right=0.99)
+  ax.scatter(x, y, c=z, s=1, cmap=cmp, norm=nrm)
+  cax, _ = matplotlib.colorbar.make_axes(ax)
+  cbar = matplotlib.colorbar.ColorbarBase(cax, norm=nrm,  cmap=cmp)
+  return fi, ax
+
+def scat(x, y, z, cmp, name, nrm):
+  fi_, ax_ = plt.subplots(1)
+  fi_.suptitle(name)
+  fi_.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
+  ax_.scatter(x, y, s=1, c=z, cmap=cmp, norm=nrm)
+  return fi_, ax_
+
+def plotter(plts, name, lbls):
+  fi_, ax_ = plt.subplots(1)
+  fi_.suptitle(name)
+  for px in range(len(plts)):
+    ax_.plot(plts[px], label=lbls[px] )
+  ax_.legend()  
+  return fi_, ax_
+
+def addnote(fig):
+  fig.text(0.02, 0.02, str(file_ct) + ' batches of 400 examples', transform=plt.gcf().transFigure)
+  return fig
+
+def get_worst_errs(errs, sq_errs):
+  for mx in range(12):
+    badbx = np.argmax(errs[mx])
+ #  gtu.arprint(ins[badbx,0:7]+ errs[mx,badbx])
+    badbx = np.argmin(sq_errs[mx])
+#   gtu.arprint(ins[badbx,0:7]+ errs[mx,badbx])
 
 sess = tf.Session()
-
 rmdl = gtm.climaRNN(1, sess, params, bTrain=False)
 init_op = tf.global_variables_initializer()
 sess.run(init_op)
-
 #tf.reset_default_graph()
-
-rmdl.restore('mdls/climarnn_1657.ckpt')
+rmdl.restore(mdl_path + '/climarnn_1657.ckpt')
 tvars = tf.trainable_variables()
 tvars_vals = sess.run(tvars)
 
@@ -85,9 +140,7 @@ for mcx in range(1):
     #feed = rmdl.bld_feed(ins, rsqs, rn_trus)
 
     fetch = [rmdl.lossers, rmdl.hypos,  rmdl.y_trues, rmdl.meta_h, rmdl.meta_loss, \
-                rmdl.meta_yt]
-
-
+                rmdl.meta_yt, rmdl.dodi]
     ploterrs = False
     if ploterrs:
       fig, axes = plt.subplots(4, sharex=True)
@@ -100,7 +153,7 @@ for mcx in range(1):
       axes[3].set_title('~52S to 30S', fontsize=8)
 
       
-    sq_errs, ests, yt, meta_ests, meta_sqerrs, meta_yt   = sess.run(fetch, feed)
+    sq_errs, ests, yt, meta_ests, meta_sqerrs, meta_yt, dodis   = sess.run(fetch, feed)
     sq_errs =np.array(sq_errs)
     ests = np.array(ests)
     yt = np.array(yt)
@@ -114,7 +167,14 @@ for mcx in range(1):
     mme = [meta_errs.mean(), meta_errs.max(), meta_errs.min(), meta_sqerrs.mean()]
     gtu.arprint(mme)
     mm_errs.append(mme)
+    print('dT/ dInputs;')
+    dodis = np.array(dodis[0])
     
+    print(dodis[:,:,gs_radx].mean(), dodis[:,:,wc_radx].mean(), dodis[:,:,wc_start].mean(), )
+    f90, ax0 = plotter([dodis[0,:,gs_radx],dodis[0,:,wc_radx],dodis[0,:,wc_start]], name='sensi' + str(tx),  \
+                         lbls=['vis','srad','21mosr'])
+    #plt.show()
+    #XSpst()
 
     
     for bx in range(b_size):
@@ -128,21 +188,16 @@ for mcx in range(1):
         axes[3].plot([1,2,3,4,5,6,7,8,9,10,11,12], errs[:,bx])
     print('location plus top 5 features for worst errors')
    # pst()
-    for mx in range(12):
-      badbx = np.argmax(errs[mx])
- #     gtu.arprint(ins[badbx,0:7]+ errs[mx,badbx])
-      badbx = np.argmin(sq_errs[mx])
-#      gtu.arprint(ins[badbx,0:7]+ errs[mx,badbx])
+
 
     #add some wiggle and check the jiggle.  
-    watts = 20.0
-    feed[rmdl.xin][:,:,1] = feed[rmdl.xin][:,:,1] + watts
-   # feed[rmdl.xin][:,:,2] = feed[rmdl.xin][:,:,2] + watts # toa solar
-    feed[rmdl.xin][:,:,7] = feed[rmdl.xin][:,:,7] + (watts*75.0)
-    feed[rmdl.xin][:,:,19] = feed[rmdl.xin][:,:,19] + (watts*75.0)
-   
-    # get temperature estimates with extra power added in
-    d_sq_errs, d_ests, d_yt, dmeta_h, dmeta_err, d_meta_yt   = sess.run(fetch, feed)
+    watts = 3.7  # add to global solar srad as watts and wc 12 month and monthly in their wacky units
+    feed[rmdl.xin][:,:,gs_radx] = feed[rmdl.xin][:,:,gs_radx] + watts
+    feed[rmdl.xin][:,:,wc_radx] = feed[rmdl.xin][:,:,wc_radx] +  (watts*75.0)
+    feed[rmdl.xin][:,:,wc_start] = feed[rmdl.xin][:,:,wc_start] + (watts*75.0)
+    # fetch temperature estimates with extra power added in from tf session run
+    d_sq_errs, d_ests, d_yt, dmeta_h, dmeta_err, d_meta_yt,d_dodis = sess.run(fetch, feed)
+    # calculate sensitivity tosurface  solar power
     dTdP = (d_ests - ests)/watts  # in unit degreeC per watt per meter square
     meta_dTdP = (dmeta_h - meta_ests)/watts
     print('power sensitivity - mean, max, min, stdev, count negative')
@@ -175,61 +230,14 @@ axe21.set_xticklabels(ticklbls)
 
 # [-1.0,-0.5,-0.4,-0.3,-0.2,-0.1,0.0,0.1,0.2,0.3,0.4]
 
-sen_normalize = matplotlib.colors.Normalize(vmin=-1.0, vmax=1.0)
+sen_normalize = matplotlib.colors.Normalize(vmin=-0.5, vmax=0.5)
 err_normalize = matplotlib.colors.Normalize(vmin=-3.0, vmax=3.0)
 
-fig, axs =plt.subplots(2,1)
-clust_data = np.random.random((10,3))
-collabel=("col 1", "col 2", "col 3")
-axs[0].axis('tight')
-axs[0].axis('off')
-the_table = axs[0].table(cellText=clust_data,colLabels=collabel,loc='center')
-
-axs[1].plot(clust_data[:,0],clust_data[:,1])
-
-def tabler(ctxt, name, colhdrs):
-  fi, ax = plt.subplots(1)
-  fi.suptitle(name)
-  fi.subplots_adjust(top=0.95, bottom=0.01, left=0.1, right=0.99)
-  tbl = ax.table(cellText=ctxt, colLabels=colhdrs, loc='center')
-  ax.axis('tight')
-  ax.axis('off')
-  #ax[0].xticks([])
-  #ax[0].yticks([])
-  return fi, ax
-
-def mapper(x,y,z, cmp, name, nrm):
-  fi, ax = plt.subplots(1)
-  fi.suptitle(name)  #'sensitivity map from test data 1 deg C mse'
-  fi.subplots_adjust(top=0.95, bottom=0.01, left=0.1, right=0.99)
-  ax.scatter(x, y, c=z, s=1, cmap=cmp, norm=nrm)
-  cax, _ = matplotlib.colorbar.make_axes(ax)
-  cbar = matplotlib.colorbar.ColorbarBase(cax, norm=nrm,  cmap=cmp)
-  return fi, ax
-
-def scat(x, y, z, cmp, name, nrm):
-  fi_, ax_ = plt.subplots(1)
-  fi_.suptitle(name)
-  fi_.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
-  ax_.scatter(x, y, s=1, c=z, cmap=cmp, norm=nrm)
-  return fi_, ax_
-
-def plotter(plts, name):
-  fi_, ax_ = plt.subplots(1)
-  fi_.suptitle(name)
-  for px in range(len(plts)):
-    ax_.plot(plts[px])
-  return fi_, ax_
-
-def addnote(fig):
-  fig.text(0.02, 0.02, str(file_ct) + ' batches of 400 examples', transform=plt.gcf().transFigure)
-  return fig         
-    
 
 chds = ['mean', 'max', 'min','mse']
 mm_errs = np.transpose(np.array(mm_errs))
 
-ft1, at1 = plotter(mm_errs, 'multi model errors - mean, max, min, mse')
+ft1, at1 = plotter(mm_errs, 'multi model errors', lbls=['mean', 'max', 'min', 'mse'] )
 ft1 = addnote(ft1)
 
 
