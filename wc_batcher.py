@@ -29,9 +29,9 @@ copyright 2019 Nelson 'Buck' Smith
 
 """
 # three rows - 9 elements 0:8 # 3 elements 9:11  #8 elemetns 12:19
-nn_features = ['lon', 'lat', 'vis_down', 'toa_pwr', 'elev', 'barop', 'pwr_ratio', 'wc_prec', 'wc_srad', \
-             'land', 'water', 'ice', \
-               'sh1h', 'nh1h', 'vis_dstd', 'elev_std', 'zs', 'gtzs', 'ltzs', 'wc_wind'] 
+nn_features = ['lon', 'lat', 'gsra', 'toa', 'elev', 'barp', 's/t', 'pre_', 'sra_', \
+             'land', 'wat', 'ice', \
+               'sh', 'nh', 'rast', 'elst', 'zs', 'gtzs', 'ltzs', 'win_'] 
 nn_feat_len = len(nn_features)
 nn_norms = [1.0, 90.0, 310.0,  415.0, 7000.0, 760.0, 1.0, 600.0, 25000.0, \
               1.0, 1.0, 1.0,  \

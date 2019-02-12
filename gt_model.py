@@ -94,7 +94,7 @@ class climaRNN():
     self.xin = tf.placeholder(tf.float32, (None, 12*_years,  xin_size), name='rnn_xin')
     self.norms =  tf.placeholder(tf.float32, (xin_size), name='rnx_norms')
     self.xnorms = tf.divide(self.xin, self.norms)
-    rnn_w1, rnn_b1 = weightSet('rnn_l1', [xin_size,30])
+    rnn_w1, rnn_b1 = weightSet('rnn_l1', [xin_size, params['pref_width']])
     rnn_l1 = []
     for mx in range(12):
       rnn_l1.append(tf.nn.tanh(tf.add(tf.matmul(self.xnorms[:,mx], rnn_w1), rnn_b1)))
@@ -140,14 +140,15 @@ class climaRNN():
     if metaTrain:
       meta_in = tf.concat((tf.transpose(tf.stack(h_norms))[0], self.xnorms[:,ix,0:self.xin_size]), axis=1)
      # pst()
-      meta_w1, meta_b1 = weightSet('meta_l1', [12+self.xin_size,20])
+      meta_w1, meta_b1 = weightSet('meta_l1', [12+self.xin_size, params['metaf_width']])
       meta_o1 = tf.nn.tanh(tf.add(tf.matmul(meta_in, meta_w1), meta_b1))
-      meta_w2, meta_b2 = weightSet('meta_l2', [20,1])
+      meta_w2, meta_b2 = weightSet('meta_l2', [params['metaf_width'], 1])
       self.meta_h  = tf.add(meta_b2,  tf.matmul(meta_o1, meta_w2))
       self.meta_yt = tf.placeholder(tf.float32, (None,  y_size), name='meta_yt')
       self.meta_loss = tf.square(self.meta_h-self.meta_yt, name='meta_loss')
       self.meta_losser = tf.reduce_mean(self.meta_loss, name='meta_losser')
-      self.dodi = tf.gradients(self.meta_h, self.xin, name='gradients_io')
+      self.do_din = tf.gradients(self.meta_h, self.xnorms, name='gradients_io_norm')
+      self.do_di = tf.gradients(self.meta_h, self.xin, name='gradients_io')
     if metaTrain and bTrain:
       meta_globstep = tf.Variable(0, trainable=False)
       meta_learn =  tf.train.exponential_decay(start_learnrate, meta_globstep, 300000, 0.9, staircase=True)
@@ -161,8 +162,8 @@ class climaRNN():
     self.vl = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
     self.sv1 = tf.train.Saver()
  
-    #pdb.set_trace()
 
+#deprecated
   def bld_feed(self, ins, rins, rn_trus):
     fd ={}
     static_ins = ins[:,1:]

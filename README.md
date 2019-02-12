@@ -18,12 +18,12 @@ average temperature at any location as a function of:
 
 The  goal of this project is a validated differentiable function that can be used to determine climate sensitivity to greenhouse gas warming.
 
-There are three models
+There are four models, first one now deleted
 
 1. A simple neural network using annual averages for up to 19 features, now abandoned.
 2. A simple linear model, originally using only surface solar power and elevation, originally called stupidModel.  However it outperforms the neural net, especially after adding toa power ratio, i.e. surface solar power / toa power.  This ratio is a pretty good measure of greenhouse power magnitude. Given its [respectable] performance it has been renamed artisanal model ;)
 3. A recurrent neural network (RNN) that takes monthly values for radiation at surface and toa plus precipitation and wind plus the annual averages as inputs and outputs a set of 12 monthly temperatures.
-4, A meta neural net built with the 12 monthly temperature  outputs of the RNN plus the original 18 features.
+4. A meta neural net built with the 12 monthly temperature  outputs of the RNN plus the original 18 features.
 
 ### workflow
 
@@ -50,7 +50,7 @@ The graphs of errs for meta model maybe gives a better idea of model accuracy
 |NN       | 100   |
 |Artisanal| 7-10  |
 |RNN      |  1-3 |
-|meta NN trained on wc temp | 0.7-1.1|
+|meta NN trained on wc temp | 0.55-0.65|
 |meta NN trained on gsm temp | 0.9-1.2|
 
 I was surprised at the awful performance of the pure neural net. I wanted additional features that  global solar does not have like precipitation, wind and surface type, i.e. land, water, or ice. The wc data was monthly so that led naturally to use  of a recurrent neural net, which is now very close to performance goal of less than 2 degrees C MSE.

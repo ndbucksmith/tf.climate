@@ -27,21 +27,22 @@ copyright 2019 Nelson 'Buck' Smith
 params = {}
 params['batch_size'] = 400
 b_size = params['batch_size']
-params['f_width'] = 12
-params['mdl_path'] = 'mdls/take2_10'
+params['pref_width'] = 30
+params['metaf_width'] = 31
+params['mdl_path'] = 'mdls/nn3031cs59'
 params['learn_rate'] = 0.05
 params['init_stddev'] = 0.05
 params['take'] = [2,3,4,5,6,7,8,9,10,11,12,13,14,15]
 take = params['take']
-params['x_size'] = len(params['take'])
-params['cell_size'] =  64
-params['rxin_size'] = len(take) + 4  # wcs + h1h + lwi + el
+params['x_size'] = len(params['take'])  #number of static once per year chanels
+params['cell_size'] =  59
+params['rxin_size'] = len(take) + 4  # mdl uses this as rmdl.xin_size
 pstr = "traing with: "
 for idx in range(len(params['take'])):
   pstr += wcb.nn_features[take[idx]]
   pstr += ', '
 print(pstr)
-target = 'wc_v2'
+target = 'wc_v2' # directory where batch files are
 file_ct = len(os.listdir(target)) 
 sess = tf.Session()
 #pst()
@@ -101,4 +102,8 @@ fig.suptitle('error vs.iteration')
 fig.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
 axe.scatter(range(len(train_history)),train_history[:,0], c='k', s=1)
 axe.scatter(range(len(train_history)),train_history[:,3], c='g', s=1)
+oner = [1.0] * len(train_history)
+pointsixer = [0.6]* len(train_history)
+axe.plot(oner)
+axe.plot(pointsixer)
 plt.show()
