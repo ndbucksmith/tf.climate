@@ -3,17 +3,21 @@ Using geotiff data to model climate with machine learning.
 Tensorflow models are trained using climate data. The learned functions predict
 average temperature at any location as a function of:
 
-* vis radiation down
-* TOA vis radiation (pure function of latitude) toa=top of atmosphere
+* longitude
+* latitude
+* vis radiation down monthly + annual
+* TOA vis radiation monthly + annual toa=top of atmosphere
 * elevation
 * barometric pressure as a function of elevation
-* precipitation
-* land or water or ice one hot
+* precipitation monthly + annual
+* land or water or ice distribution
 * hemisphere onehot
 * albedo
+* wind monthly + annual
 * convolutions of surrounding area such as
-   * NS and EW slope
+   * NS and EW slope (tbd)
    * STD of elevation
+   * STD of surface vis
 
 
 The  goal of this project is a validated differentiable function that can be used to determine climate sensitivity to greenhouse gas warming.
@@ -50,11 +54,13 @@ The graphs of errs for meta model maybe gives a better idea of model accuracy
 |Artisanal| 7-10  |
 |RNN      |  1-2 |
 |meta NN trained on wc temp | 0.4-0.55|
-|meta NN trained on gsm temp | 0.8-1.2|
+|meta NN trained on gsa temp | 0.8-1.2|
 
 I was surprised at the awful performance of the pure neural net. I wanted additional features that global solar does not have like precipitation, wind and surface type, i.e. land, water, or ice. The wc data was monthly so that led naturally to use  of a recurrent neural net, which is now way belwo initial  performance goal of less than 2 degrees C MSE.
 
 The data is heavily biased toward land, though there are a few kilometers of data in the ocean around most coasts.  It is also northern hemisphere centric because there is much more land in northern hemisphere.  Use of bidirectional RNN helps avoid hemisphere confusions, though we still input hemisphere as a two wide NS onehot into both NN and RNN.
+
+The meta model shows no loss in accuracy between test data set and the last 1000 batches of training examples. At below 0.5 C its accuracy must close to the accuracy of the data.
 
 ### data file drectrory tree
 
