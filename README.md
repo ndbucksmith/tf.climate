@@ -43,18 +43,17 @@ All models are wrong, some models are useful. For the purpose of determining cli
 
 The graphs of errs for meta model maybe gives a better idea of model accuracy
 
-![meta model errs by batch](metamodel_errs.png)
 
 |Model| MSE degree C|
 |-----|-----------|
 |NN       | 100   |
 |Artisanal| 7-10  |
-|RNN      |  1-3 |
-|meta NN trained on wc temp | 0.55-0.65|
-|meta NN trained on gsm temp | 0.9-1.2|
+|RNN      |  1-2 |
+|meta NN trained on wc temp | 0.4-0.55|
+|meta NN trained on gsm temp | 0.8-1.2|
 
-I was surprised at the awful performance of the pure neural net. I wanted additional features that  global solar does not have like precipitation, wind and surface type, i.e. land, water, or ice. The wc data was monthly so that led naturally to use  of a recurrent neural net, which is now very close to performance goal of less than 2 degrees C MSE.
-Errors are largest in the temperate part of the northern hemisphere.  An obvious step to improve accuracy would be to add RNNS for northern and southern hemisphere or maybe 4 RNNs for North-South Tropics-Temperate.
+I was surprised at the awful performance of the pure neural net. I wanted additional features that global solar does not have like precipitation, wind and surface type, i.e. land, water, or ice. The wc data was monthly so that led naturally to use  of a recurrent neural net, which is now way belwo initial  performance goal of less than 2 degrees C MSE.
+
 The data is heavily biased toward land, though there are a few kilometers of data in the ocean around most coasts.  It is also northern hemisphere centric because there is much more land in northern hemisphere.  Use of bidirectional RNN helps avoid hemisphere confusions, though we still input hemisphere as a two wide NS onehot into both NN and RNN.
 
 ### data file drectrory tree
