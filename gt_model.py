@@ -22,6 +22,14 @@ copyright 2019 Nelson 'Buck' Smith
 """
 metaTrain = True
 
+#hack to add alebdo channel
+def add_albedo(ins):
+  ins_1 = np.zeros((400,21), dtype=np.float32)
+  ins_1[:,:-1] = ins
+  ins_1[:,20] = (ins_1[:,9] * 0.2) + (ins_1[:,10] * 0.1) + (ins_1[:,11] * 0.6)
+  return ins_1
+
+
 class artisanalModel():
   def __init__(self,sess, params, bTrain=True):
     self.batch_size = params['batch_size']
@@ -58,9 +66,7 @@ class artisanalModel():
     else:
       self.ts = None
    # self.sess.run(tf.global_variables_initializer())
-
    
-    
   def bld_feed(self, Ins, Trues):
     fd = {}
     fd[self.pwr] = Ins[:,2]
@@ -70,6 +76,7 @@ class artisanalModel():
     fd[self.smy_true] = Trues
     return fd
 
+  
 class climaRNN():
   def __init__(self, _years, sess, params, bTrain=True):
     cell_size = params['cell_size']; self.cell_size = cell_size 
@@ -162,7 +169,6 @@ class climaRNN():
     self.vl = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
     self.sv1 = tf.train.Saver()
  
-
 #deprecated
   def bld_feed(self, ins, rins, rn_trus):
     fd ={}
@@ -174,7 +180,6 @@ class climaRNN():
     for mx in range(12):
       static_12mo.append(static_ins)
       fd[self.y_trues[mx]] = rn_trus[:,mx]
-
     rins_swap = np.swapaxes(rins, 1, 2)
     stat_swap = np.swapaxes(static_12mo, 0, 1)
     full_rinset = np.concatenate((stat_swap, rins_swap), axis=2)
@@ -184,32 +189,35 @@ class climaRNN():
     #pdb.set_trace()
     return fd
 
+
+  
   def bld_multiyearfeed(self, yrs, ins, rins, rn_trus, me_trus):
     fd ={}
-    #static_ins = ins[:,1:] 
+    r_take = self.params['rnn_take']
+    #pdb.set_trace()
+    ins = add_albedo(ins)
     static_ins =np.take(ins, self.params['take'], axis=1)  #shape batch, 20 odd
-    static_norms = np.take(wcb.nn_norms, self.params['take'])  #shape 20 od
+    static_norms = np.take(wcb.nn_norms, self.params['take'])  #shape xin length 
     static_multiyr = []
     rn_trus = np.reshape(np.array(rn_trus), (-1,12,1))
-    #pdb.set_trace()
     for mx in range(12*yrs):
       static_multiyr.append(static_ins)  #shape mo, batch, 20 odd
       fd[self.y_trues[mx]] = rn_trus[:,mx % 12]
-   # rins are  batch, feature, month  swap to batch, month, feature 
-    rins_swap = np.swapaxes(rins, 1, 2)
+   # rins are  batch, feature, month  swap to batch, month, feature
+#________mod to test without precip
+    rins_swap = np.take(np.swapaxes(rins, 1, 2), r_take, axis=2)
     rins_multiyr = rins_swap
     for yx in range(yrs-1):
         rins_multiyr = np.concatenate((rins_multiyr, rins_swap), axis=1)
     static_multiyr = np.array(static_multiyr)
     stat_swap = np.swapaxes(static_multiyr, 0, 1) # swap to bat,mo,feat
     full_rinset = np.concatenate((stat_swap, rins_multiyr), axis=2)
-    full_normset = np.concatenate((static_norms, wcb.rnn_norms))
+    full_normset = np.concatenate((static_norms, np.take(wcb.rnn_norms, r_take)))
     fd[self.xin] = full_rinset
     fd[self.norms] = full_normset
     fd[self.meta_yt] = np.reshape(np.array(me_trus), (-1,1))
     #pdb.set_trace()
     return fd
-
 
   def save(self, path, tx):
     #pdb.set_trace()
@@ -237,16 +245,6 @@ def weightSet(name, shape):
   bi = tf.get_variable(name+'_bias', None, tf.float32, tf.zeros(shape[-1]))
   return wt, bi
 
-class  climaLayer():
-  def __init__(self, name, x, width):
-    
-    in_size = x.shape[-1].value
-    lay_wt = tf.get_variable('wt_' + name, [in_size, width], tf.float32,  \
-                              tf.random_normal([in_size,width], stddev=0.01))
-    lay_bi = tf.get_variable('bi_'+name, None, tf.float32, tf.zeros(width))
-    lay_op =  (x * W) + b
-    lay_act = tf.relu(lay_op, name='lay_out_'+name)
-    return lay_out
 
     
 """

@@ -28,14 +28,15 @@ and adds annual wind value to nn_features
 copyright 2019 Nelson 'Buck' Smith
 
 """
-# three rows - 9 elements 0:8 # 3 elements 9:11  #8 elemetns 12:19
-nn_features = ['lon', 'lat', 'gsra', 'toa', 'elev', 'barp', 's/t', 'pre_', 'sra_', \
+# four rows - r1 ct 9 slice 0:9, r2 ct 3 slice 9:12, r3 ct8 slice 12:20, r4 ct1 slice 20
+nn_features = ['lon', 'lat', 'gsra', 'toa_', 'elev', 'barp', 's/t', 'pre_', 'sra_', \
              'land', 'wat', 'ice', \
-               'sh', 'nh', 'rast', 'elst', 'zs', 'gtzs', 'ltzs', 'win_'] 
+               'sh', 'nh', 'rast', 'elst', 'zs', 'gtzs', 'ltzs', 'win_', \
+                'alb'] 
 nn_feat_len = len(nn_features)
-nn_norms = [1.0, 90.0, 310.0,  415.0, 7000.0, 760.0, 1.0, 600.0, 25000.0, \
+nn_norms = [180.0, 90.0, 310.0,  415.0, 7000.0, 760.0, 1.0, 600.0, 25000.0, \
               1.0, 1.0, 1.0,  \
-              1.0, 1.0, 50.0, 4000.0, 400.0, 400.0, 400.0, 10.0]
+              1.0, 1.0, 50.0, 4000.0, 400.0, 400.0, 400.0, 10.0, 1.0]
 assert len(nn_norms) == nn_feat_len
 rnn_features =['srad','prec','toa','wind']
 rnn_norms = [32768.0, 2400.0, 500.0, 11.0]

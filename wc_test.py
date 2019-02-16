@@ -26,7 +26,7 @@ copyright 2019 Nelson 'Buck' Smith
 
 target = 'wc_v2test'
 file_ct = len(os.listdir(target))
-mdl_path = 'mdls/nn3031cs59'
+mdl_path = 'mdls/nn3031cs60walb'
 if True:
   with open(mdl_path +'/params.json', 'r') as fi:
     params = json.load(fi)
@@ -36,19 +36,21 @@ x_size = params['rxin_size']
 
 imap_lbls = []
 pstr = "channels:: "
-for idx in range(len(params['take'])):
-  pstr += wcb.nn_features[take[idx]]
+for idx in take:
+  pstr += wcb.nn_features[idx]
   pstr += ', '
-  imap_lbls.append(wcb.nn_features[take[idx]])
-for ix in range(4):
+  imap_lbls.append(wcb.nn_features[idx])
+for ix in params['rnn_take']:
   imap_lbls.append(wcb.rnn_features[ix]) 
 print(pstr)
 wc_start = len(params['take'])
-gs_radx = 0  #index used for wiggle jiggle sensitivity
-wc_radx = 6
+gs_radx = take.index(2)  #index used for wiggle jiggle sensitivity
+wc_radx = take.index(8)
+alb_ix =  wc_start-1
 
 assert wcb.nn_features[take[gs_radx]]  == 'gsra'
 assert wcb.nn_features[take[wc_radx]]  == 'sra_'
+assert wcb.nn_features[take[alb_ix]]  == 'alb'
 
 def tabler(ctxt, name, colhdrs):
   fi, ax = plt.subplots(1)
@@ -72,9 +74,8 @@ def mapper(x,y,z, cmp, name, nrm):
 
 def scat(x, y, z, cmp, name, nrm):
   fi_, ax_ = plt.subplots(1)
-  fi_.subplots_adjust(top=0.95, bottom=0.2, left=0.2, right=0.99)
+  fi_.subplots_adjust(top=0.95, bottom=0.1, left=0.2, right=0.99)
   fi_.suptitle(name)
-  fi_.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
   ax_.scatter(x, y, s=1, c=z, cmap=cmp, norm=nrm)
   return fi_, ax_
 
@@ -98,7 +99,10 @@ def get_worst_errs(errs, sq_errs):
     badbx = np.argmin(sq_errs[mx])
 #   gtu.arprint(ins[badbx,0:7]+ errs[mx,badbx])
 
-infl_map =[]
+infl_map_hh = []; infl_map_h =[ ];
+infl_map_cc = []; infl_map_c = [];
+infl_ct_hh = [0]*x_size; infl_ct_h = [0]*x_size;
+infl_ct_cc = [0]*x_size; infl_ct_c = [0]*x_size;
 def influence_map(infl_sort, grads):
   mm_ix =[0, 1, 2, x_size-3, x_size-2, x_size-1]
   for bx in range(b_size):
@@ -108,7 +112,19 @@ def influence_map(infl_sort, grads):
        x_ = gradix  + ((np.random.rand() - 0.5)/2.0)
        y_ = mx + ((np.random.rand() - 0.5)/1.33)
        z_ = grads[bx, mx, gradix]
-       infl_map.append([x_, y_, z_])
+       if ix == 0:
+         infl_map_cc.append([x_, y_, z_])
+         infl_ct_cc[gradix] += 1
+       elif ix==2 or ix == 1:
+         infl_map_c.append([x_, y_, z_])
+         infl_ct_c[gradix] += 1
+       elif ix ==  x_size-1:
+         infl_map_hh.append([x_, y_, z_])
+         infl_ct_hh[gradix] += 1
+       else:
+         infl_map_h.append([x_, y_, z_])
+         infl_ct_h[gradix] += 1
+
 
 def examp_plot(bx, name):
   f_ex, a_ex = plt.subplots(4,1)
@@ -188,6 +204,7 @@ for mcx in range(1):
     print('meta model errs mean, min, max')
     mme = [meta_errs.mean(), meta_errs.max(), meta_errs.min(), meta_sqerrs.mean()]
     gtu.arprint(mme)
+    mme.append(0.5); mme.append(1.0);
     mm_errs.append(mme)
     do_dins = np.array(do_dins[0]) 
     dodis = np.array(dodis[0])
@@ -200,7 +217,7 @@ for mcx in range(1):
    
   
  #   f90, ax0 = plotter([dodis[0,:,gs_radx],dodis[0,:,wc_radx],dodis[0,:,wc_start]], name='sensi' + str(tx),  \
- #                        lbls=['vis','srad','21mosr'])
+ #                        lbls=['vis','srad','12mosr'])
  
 
     for bx in range(b_size):
@@ -224,6 +241,8 @@ for mcx in range(1):
     # calculate sensitivity tosurface  solar power
     dTdP = (d_ests - ests)/watts  # in unit degreeC per watt per meter square
     meta_dTdP = (dmeta_h - meta_ests)/watts
+
+    meta_dTdP = meta_dTdP /  (1-np.reshape(feed[rmdl.xin][:,0,alb_ix], (400,1)))
     print('power sensitivity - mean, max, min, stdev, count negative')
     gtu.arprint([dTdP.mean(), dTdP.max(), dTdP.min(), dTdP.std(), (dTdP < 0.0).sum()])
     gtu.arprint([meta_dTdP.mean(), meta_dTdP.max(), meta_dTdP.min(), meta_dTdP.std(), (meta_dTdP < 0.0).sum()])
@@ -233,7 +252,9 @@ for mcx in range(1):
     for bx in range(b_size):
       test_map.append(np.concatenate( (ins[bx,0:7],errs[:,bx,0],overall_errs[bx], \
                                        dTdP[:,bx,0], [dTdP[:,bx,0].mean()],meta_errs[bx],  \
-                                       meta_dTdP[bx], [bx], [tx]) ))   
+                                       meta_dTdP[bx],meta_yt[bx], meta_ests[bx], [bx], [tx]) ))
+
+
   #  f_expH, a_exHp = examp_plot(meta_errs.argmax(), 'model hot error')
   #  f_expC, a_expC = examp_plot(meta_errs.argmin(), 'model cold error')
   #  bgx = 0; # find example with good accuracy
@@ -241,7 +262,7 @@ for mcx in range(1):
   #    bgx+=1
   #  f_exp, a_exp = examp_plot(bgx, 'model pretty good')  
  #   plt.show()
-    if False:  # graph to compare mnaul sens and tf.grads
+    if False:  # graph to compare manaul sens calc and tf.grads
       f1sens, a1sens  =  scat(meta_dTdP, surfPower_grad ,'k' , None, \
                               'Manual Sens calc with  delta=' + str(watts) + ' watts vs. tf.gradients', None)
       a1sens.xaxis.set_label_text('manual')
@@ -251,19 +272,40 @@ for mcx in range(1):
 
 
 test_map = np.array(test_map)
-print('test map dataset shape, max and min sensitivty')
-print(test_map.shape, test_map[:,34].max(), test_map[:,34].min())
-sen_histo = np.histogram(test_map[:,34] )
+print('test map dataset shape, max and min sensitivty, count negative')
+print(test_map.shape, test_map[:,34].max(), test_map[:,34].min(), (test_map[:,34] < 0.0).sum())
+sen_histo = np.histogram(test_map[:,34], bins=20)
 print('histo')
 print(zip(sen_histo[0], sen_histo[1][0:-1]))
 
-infl_map = np.array(infl_map)
+infl_map_cc = np.array(infl_map_cc)
+infl_map_c = np.array(infl_map_c)
+infl_map_h = np.array(infl_map_h)
+infl_map_hh = np.array(infl_map_hh)
 print('influence map dT/dfeat max min')
-print(infl_map[:,2].min(), infl_map[:,2].max())
-infl_norm = matplotlib.colors.Normalize(vmin=-50.0, vmax=50.0)
-finfl, ainfl = mapper(infl_map[:,0], infl_map[:,1], infl_map[:,2], 'coolwarm', \
-                'top influencers by month  up and down', \
-                infl_norm)
+print(infl_map_cc[:,2].min(), infl_map_cc[:,2].max())
+print(infl_map_hh[:,2].min(), infl_map_hh[:,2].max())
+print(infl_map_c[:,2].min(), infl_map_c[:,2].max())
+print(infl_map_h[:,2].min(), infl_map_h[:,2].max())
+print('influence count  dT/dfeat ')
+print(pstr)
+print(infl_ct_cc)
+print(infl_ct_c)
+print(infl_ct_h)
+print(infl_ct_hh)
+#infl_norm = matplotlib.colors.Normalize(vmin=-50.0, vmax=50.0)
+#finfl, ainfl = mapper(infl_map[:,0], infl_map[:,1], infl_map[:,2], 'coolwarm', \
+ #               'top influencers by month  up and down', \
+#                infl_norm)
+inf_scatx = [infl_map_hh[:,0], infl_map_c[:,0],infl_map_h[:,0],infl_map_cc[:,0]]
+inf_scaty = [infl_map_hh[:,1], infl_map_c[:,1],infl_map_h[:,1],infl_map_cc[:,1]]
+inf_cs = ['r', 'g', 'orange', 'b']
+finfl, ainfl = plt.subplots(1)
+finfl.subplots_adjust(top=0.95, bottom=0.1, left=0.2, right=0.99)
+finfl.suptitle('top influencers by month  up and down')
+for ax in range(4):
+ ainfl.scatter(inf_scatx[ax], inf_scaty[ax], s=1, c=inf_cs[ax],marker=',', cmap=None, norm=None)
+
 addnote(finfl)
 
 ainfl.xaxis.set_ticks(range(x_size))
@@ -272,15 +314,31 @@ ainfl.xaxis.set_tick_params(labelsize=6.0)
 ainfl.yaxis.set_ticks(range(12))
 ainfl.yaxis.set_ticklabels(['J','F','M','A','M','j','J','A','S','O','N','D'])
 
+fig_inf_ct, axe_inf_ct = plt.subplots(2,1)
+fig_inf_ct.suptitle('tf.climate meta-model number 1 and 2 gradients, hot and cold count by normalized feature')
+cowi = 0.4
+axe_inf_ct[0].bar(range(x_size), infl_ct_cc, color='b', align='edge', width=cowi)
+axe_inf_ct[0].bar(range(x_size), infl_ct_hh, color='r', align='edge', width=-cowi)
+axe_inf_ct[1].bar(range(x_size), infl_ct_c, color='b', align='edge', width=cowi)
+axe_inf_ct[1].bar(range(x_size), infl_ct_h, color='r', align='edge', width=-cowi)
+axe_inf_ct[1].xaxis.set_ticks(range(x_size))
+axe_inf_ct[1].xaxis.set_ticklabels(imap_lbls)
+axe_inf_ct[0].xaxis.set_ticks(range(x_size))
+axe_inf_ct[0].xaxis.set_ticklabels(imap_lbls)
+addnote(fig_inf_ct)
 
 fig21, axe21 = plt.subplots(1)
 fig21.suptitle('sensitivity distribution')
-axe21.bar(range(10), sen_histo[0], align='center', )
+axe21.bar(range(len(sen_histo[0])), sen_histo[0], align='center', )
 ticklbls = []
 for ix in range(len(sen_histo[1][0:-1])):
   ticklbls.append( str(round(sen_histo[1][ix+1], 3)))
+axe21.xaxis.set_ticks(range(len(ticklbls)))
+axe21.xaxis.set_ticklabels(ticklbls)
 
-axe21.set_xticklabels(ticklbls)
+
+
+
 
 # [-1.0,-0.5,-0.4,-0.3,-0.2,-0.1,0.0,0.1,0.2,0.3,0.4]
 
@@ -288,10 +346,10 @@ sen_normalize = matplotlib.colors.Normalize(vmin=-0.5, vmax=0.5)
 err_normalize = matplotlib.colors.Normalize(vmin=-3.0, vmax=3.0)
 
 
-chds = ['mean', 'max', 'min','mse']
+chds = ['mean', 'max', 'min','mse','0.5','1.0']
 mm_errs = np.transpose(np.array(mm_errs))
 
-ft1, at1 = plotter(mm_errs, 'dual train RNN+NN meta model errors', lbls=['mean', 'max', 'min', 'mse'] )
+ft1, at1 = plotter(mm_errs, 'dual train RNN+NN meta model errors', lbls=chds )
 ft1 = addnote(ft1)
 
 
@@ -305,10 +363,11 @@ f2, a2 = mapper(test_map[:,0], test_map[:,1], test_map[:,34], 'coolwarm', \
                 sen_normalize)
 addnote(f2)
 
-f4, a4 = scat(test_map[:,4], test_map[:,34], test_map[:,34], 'RdBu', \
+if False:
+  f4, a4 = scat(test_map[:,4], test_map[:,34], test_map[:,34], 'RdBu', \
               'sensitivity v elevation', sen_normalize)
 
-f5, a5 = scat(test_map[:,1], test_map[:,34], test_map[:,34], 'RdBu', \
+  f5, a5 = scat(test_map[:,1], test_map[:,34], test_map[:,34], 'RdBu', \
               'sensitivity v latutude', sen_normalize)
 
 if False:
@@ -318,11 +377,18 @@ if True:
   f7, a7 =  scat(test_map[:,32], test_map[:,33], 'k', None, \
                  'sensitivity v error', None)
 
-f8, a8 = scat(test_map[:,1], test_map[:,33], test_map[:,33], 'RdBu', \
+if False:
+  f8, a8 = scat(test_map[:,1], test_map[:,33], test_map[:,33], 'RdBu', \
               'error v latutude', err_normalize)
 
-f9, a9 = scat(test_map[:,4], test_map[:,33], test_map[:,33], 'RdBu', \
+  f9, a9 = scat(test_map[:,4], test_map[:,33], test_map[:,33], 'RdBu', \
               'error v elevation', err_normalize)
+
+ffreeze, axfreeze = scat(test_map[:,35], test_map[:,34], test_map[:,34], 'RdBu', \
+              'sensitivity v Trutemp', sen_normalize)
+
+fyt, axtt = scat(test_map[:,35], test_map[:,36], 'k', None, \
+                 'model est v Trutemp', None)
 
 plt.show()
 
