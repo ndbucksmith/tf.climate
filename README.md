@@ -60,7 +60,7 @@ I was surprised at the awful performance of the pure neural net. I wanted additi
 
 The data is heavily biased toward land, though there are a few kilometers of data in the ocean around most coasts.  It is also northern hemisphere centric because there is much more land in northern hemisphere.  Use of bidirectional RNN helps avoid hemisphere confusions, though we still input hemisphere as a two wide NS onehot into both NN and RNN.
 
-The meta model shows no loss in accuracy between test data set and the last 1000 batches of training examples. At below 0.5 C its accuracy must close to the accuracy of the data.
+The meta model shows no loss in accuracy between test data set and the last 1000 batches of training examples. At below 0.5 C its accuracy must be close to the accuracy of the data.
 
 ### data file drectrory tree
 
