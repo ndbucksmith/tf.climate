@@ -1,7 +1,8 @@
 import numpy as np
 import time
 import rasterio as rio
-import matplotlib as plt
+import matplotlib
+import matplotlib.pyplot as plt
 import pickle
 import pdb
 import math
@@ -44,6 +45,29 @@ target = 'wc_v2'
 file_ct = len(os.listdir(target)) 
 #
 
+
+
+
+def scat(x, y, z, cmp, name, nrm):
+  fi_, ax_ = plt.subplots(1)
+  fi_.subplots_adjust(top=0.95, bottom=0.1, left=0.2, right=0.99)
+  fi_.suptitle(name)
+  ax_.scatter(x, y, s=1, c=z, cmap=cmp, norm=nrm)
+  return fi_, ax_
+
+def plotter(plts, name, lbls):
+  fi_, ax_ = plt.subplots(1)
+  fi_.suptitle(name)
+  for px in range(len(plts)):
+    ax_.plot(plts[px], label=lbls[px] )
+  ax_.legend()  
+  return fi_, ax_
+
+def addnote(fig):
+  fig.text(0.02, 0.02, str(file_ct) + ' batches of 400 examples', transform=plt.gcf().transFigure)
+  fig.text(0.5, 0.02,mdl_path , transform=plt.gcf().transFigure)
+  return fig
+
 maxes = []
 for mcx in range(1):
 
@@ -77,7 +101,12 @@ for mcx in range(1):
       for rnx in range(4):
         rn_maxes.append(rsqs[:,rnx,:].max())
         rn_mins.append(rsqs[:,rnx,:].min())
+      trus_cat = trus
+      wc_trus_cat = wc_trus
+      
     else:
+      trus_cat = np.concatenate((trus_cat, trus), axis=0)
+      wc_trus_cat = np.concatenate((wc_trus_cat, wc_trus), axis=0)
       bmaxes =  np.amax(ins, axis=0)
       bmins = np.amin(ins, axis=0)
       for px in range(len(ins_maxes)):
@@ -113,4 +142,10 @@ for mcx in range(1):
       gtu.arprint([rn_trumin, rn_trumax])
       gtu.arprint([wc_trus_min, wc_trus_max])
       gtu.arprint([trus_min, trus_max])   
-      pst()
+
+
+pst()
+
+fig1, axe1 = scat(wc_trus_cat, trus_cat, 'k', cmp=None, name='Global Solar vs worldclim.org average temp', nrm=None)
+plt.show()
+    

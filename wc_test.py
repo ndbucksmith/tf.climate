@@ -342,7 +342,7 @@ axe21.xaxis.set_ticklabels(ticklbls)
 
 # [-1.0,-0.5,-0.4,-0.3,-0.2,-0.1,0.0,0.1,0.2,0.3,0.4]
 
-sen_normalize = matplotlib.colors.Normalize(vmin=-0.5, vmax=0.5)
+sen_normalize = matplotlib.colors.Normalize(vmin=-0.3, vmax=0.3)
 err_normalize = matplotlib.colors.Normalize(vmin=-3.0, vmax=3.0)
 
 
@@ -354,21 +354,21 @@ ft1 = addnote(ft1)
 
 
 f3, a3 = mapper(test_map[:,0], test_map[:,1], test_map[:,33], 'coolwarm', \
-                'overall error map from test data 1 deg mse', \
+                'overall error map from test data w 0.5 deg C mse', \
                 err_normalize)
 addnote(f3)
 
 f2, a2 = mapper(test_map[:,0], test_map[:,1], test_map[:,34], 'coolwarm', \
-              'sensitivity map from test data 1 deg C mse', \
+              'sensitivity map from test data w 0.5 deg C mse', \
                 sen_normalize)
 addnote(f2)
 
-if False:
-  f4, a4 = scat(test_map[:,4], test_map[:,34], test_map[:,34], 'RdBu', \
-              'sensitivity v elevation', sen_normalize)
+if True:
+  f4, a4 = scat(test_map[:,4], test_map[:,34], 'k', None, \
+                'sensitivity v elevation', None)
 
-  f5, a5 = scat(test_map[:,1], test_map[:,34], test_map[:,34], 'RdBu', \
-              'sensitivity v latutude', sen_normalize)
+  f5, a5 = scat(test_map[:,1], test_map[:,34],'k', None, \
+                'sensitivity v latutude', None)
 
 if False:
   f6, a6 =  scat(test_map[:,2], test_map[:,32], test_map[:,32], 'RdBu', \
