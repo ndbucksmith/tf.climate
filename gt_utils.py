@@ -2,7 +2,8 @@ import numpy as np
 import time
 import datetime
 import rasterio as rio
-import matplotlib as plt
+import matplotlib
+import matplotlib.pyplot as plt
 import pickle
 import pdb
 import math
@@ -41,33 +42,6 @@ def albbylat(lattitude):
 def toaPower(lat):
   P = np.interp(lat, latluts.lattitude, list(reversed(latluts.power)))
   return P
-
-
-#deprecated windows now built handled  in batcher using rasterio 
-def get_windims(hei, wid, nocols, norows):
-  rw = wid/nocols
-  ch = hei/norows
-  modrw = wid%nocols
-  modch = hei%norows
-  assert modrw == 0; assert modch == 0;
-  return rw, ch, modrw, modch
-
-#deprecated                     
-def build_winlist(NestLat,SestLat, res, nocols, hemirows):
-  windows = []   #Window(col_off, row_off, width, height)
-  #build NHemi list row by row
-  rw,ch, modrw, modch = get_windims(NestLat * res, 360 *res, nocols, hemirows)
-  modch = 0; coff=0; roff=0;
-  for loct in range(nocols):
-    for lact in range(hemirows):
-      windows.append(rio.windows.Window(loct*rw, lact*ch, rw, ch))
-  eq_off = lact*ch
-  rw,ch, modrw, modch = get_windims(SestLat * res, 360 *res, nocols, hemirows)
-  for loct in range(nocols):
-    for lact in range(hemirows):
-      windows.append(rio.windows.Window(loct*rw, eq_off+(lact*ch),\
-                      rw, ch))
-  return windows
 
 #print array with rounded values for easy compare
 def arprint(inp):
@@ -141,9 +115,49 @@ def toa_series_val():
     toaser = acc12mo_avg(toa_series(lat))
     arprint([toalut, toaser])    
 
-#toa_series_val()    
-#pdb.set_trace()
-                  
+def tabler(ctxt, name, colhdrs):
+  fi, ax = plt.subplots(1)
+  fi.suptitle(name)
+  fi.subplots_adjust(top=0.95, bottom=0.01, left=0.1, right=0.99)
+  tbl = ax.table(cellText=ctxt, colLabels=colhdrs, loc='center')
+  ax.axis('tight')
+  ax.axis('off')
+  #ax[0].xticks([])
+  #ax[0].yticks([])
+  return fi, ax
+
+def scat(x, y, z, cmp, name, nrm):
+  fi_, ax_ = plt.subplots(1)
+  fi_.subplots_adjust(top=0.95, bottom=0.1, left=0.2, right=0.99)
+  fi_.suptitle(name)
+  ax_.scatter(x, y, s=1, c=z, cmap=cmp, norm=nrm)
+  return fi_, ax_
+
+def plotter(plts, name, lbls):
+  fi_, ax_ = plt.subplots(1)
+  fi_.suptitle(name)
+  for px in range(len(plts)):
+    ax_.plot(plts[px], label=lbls[px] )
+  ax_.legend()  
+  return fi_, ax_
+
+
+def addnote(fig, params):
+  fig.text(0.02, 0.02, str(params['file_ct']) + ' batches of 400 examples', transform=plt.gcf().transFigure)
+  fig.text(0.5, 0.02,params['mdl_path'] , transform=plt.gcf().transFigure)
+  return fig
+
+
+def mapper(x,y,z, cmp, name, nrm):
+  fi, ax = plt.subplots(1)
+  fi.suptitle(name)  #'sensitivity map from test data 1 deg C mse'
+  fi.subplots_adjust(top=0.95, bottom=0.1, left=0.1, right=0.99)
+  ax.scatter(x, y, c=z, s=1, cmap=cmp, norm=nrm)
+  cax, _ = matplotlib.colorbar.make_axes(ax)
+  cbar = matplotlib.colorbar.ColorbarBase(cax, norm=nrm,  cmap=cmp)
+  return fi, ax
+
+#-----------------old code some of which may still be used in win_stat_book.py
 #deprecate and use rasterio xy()
 def llscale(lax, lox, res, startLat):
   res = float(res)
@@ -158,4 +172,28 @@ def invllscale(lat, lon, res, startLat):
   return lax, lox
 
 
+#deprecated windows now built handled  in batcher using rasterio 
+def get_windims(hei, wid, nocols, norows):
+  rw = wid/nocols
+  ch = hei/norows
+  modrw = wid%nocols
+  modch = hei%norows
+  assert modrw == 0; assert modch == 0;
+  return rw, ch, modrw, modch
 
+#deprecated                     
+def build_winlist(NestLat,SestLat, res, nocols, hemirows):
+  windows = []   #Window(col_off, row_off, width, height)
+  #build NHemi list row by row
+  rw,ch, modrw, modch = get_windims(NestLat * res, 360 *res, nocols, hemirows)
+  modch = 0; coff=0; roff=0;
+  for loct in range(nocols):
+    for lact in range(hemirows):
+      windows.append(rio.windows.Window(loct*rw, lact*ch, rw, ch))
+  eq_off = lact*ch
+  rw,ch, modrw, modch = get_windims(SestLat * res, 360 *res, nocols, hemirows)
+  for loct in range(nocols):
+    for lact in range(hemirows):
+      windows.append(rio.windows.Window(loct*rw, eq_off+(lact*ch),\
+                      rw, ch))
+  return windows

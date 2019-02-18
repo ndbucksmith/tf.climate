@@ -8,6 +8,7 @@ import pdb
 import math
 import tensorflow as tf
 import gt_utils as gtu
+from gt_utils import mapper,tabler, plotter, scat, addnote
 import gt_model as gtm
 import wc_batcher as wcb
 import os
@@ -23,16 +24,17 @@ copyright 2019 Nelson 'Buck' Smith
 
 """
 
-
 target = 'wc_v2test'
 file_ct = len(os.listdir(target))
-mdl_path = 'mdls/nn3031cs60walb'
+mdl_path = 'mdls/nn3031cs50'
 if True:
   with open(mdl_path +'/params.json', 'r') as fi:
     params = json.load(fi)
 take = params['take']
 b_size = params['batch_size']
 x_size = params['rxin_size']
+params['file_ct'] = file_ct
+params['mdl_path'] = mdl_path
 
 imap_lbls = []
 pstr = "channels:: "
@@ -43,6 +45,8 @@ for idx in take:
 for ix in params['rnn_take']:
   imap_lbls.append(wcb.rnn_features[ix]) 
 print(pstr)
+params['ch_labels'] = imap_lbls
+
 wc_start = len(params['take'])
 gs_radx = take.index(2)  #index used for wiggle jiggle sensitivity
 wc_radx = take.index(8)
@@ -52,52 +56,6 @@ assert wcb.nn_features[take[gs_radx]]  == 'gsra'
 assert wcb.nn_features[take[wc_radx]]  == 'sra_'
 assert wcb.nn_features[take[alb_ix]]  == 'alb'
 
-def tabler(ctxt, name, colhdrs):
-  fi, ax = plt.subplots(1)
-  fi.suptitle(name)
-  fi.subplots_adjust(top=0.95, bottom=0.01, left=0.1, right=0.99)
-  tbl = ax.table(cellText=ctxt, colLabels=colhdrs, loc='center')
-  ax.axis('tight')
-  ax.axis('off')
-  #ax[0].xticks([])
-  #ax[0].yticks([])
-  return fi, ax
-
-def mapper(x,y,z, cmp, name, nrm):
-  fi, ax = plt.subplots(1)
-  fi.suptitle(name)  #'sensitivity map from test data 1 deg C mse'
-  fi.subplots_adjust(top=0.95, bottom=0.1, left=0.1, right=0.99)
-  ax.scatter(x, y, c=z, s=1, cmap=cmp, norm=nrm)
-  cax, _ = matplotlib.colorbar.make_axes(ax)
-  cbar = matplotlib.colorbar.ColorbarBase(cax, norm=nrm,  cmap=cmp)
-  return fi, ax
-
-def scat(x, y, z, cmp, name, nrm):
-  fi_, ax_ = plt.subplots(1)
-  fi_.subplots_adjust(top=0.95, bottom=0.1, left=0.2, right=0.99)
-  fi_.suptitle(name)
-  ax_.scatter(x, y, s=1, c=z, cmap=cmp, norm=nrm)
-  return fi_, ax_
-
-def plotter(plts, name, lbls):
-  fi_, ax_ = plt.subplots(1)
-  fi_.suptitle(name)
-  for px in range(len(plts)):
-    ax_.plot(plts[px], label=lbls[px] )
-  ax_.legend()  
-  return fi_, ax_
-
-def addnote(fig):
-  fig.text(0.02, 0.02, str(file_ct) + ' batches of 400 examples', transform=plt.gcf().transFigure)
-  fig.text(0.5, 0.02,mdl_path , transform=plt.gcf().transFigure)
-  return fig
-
-def get_worst_errs(errs, sq_errs):
-  for mx in range(12):
-    badbx = np.argmax(errs[mx])
- #  gtu.arprint(ins[badbx,0:7]+ errs[mx,badbx])
-    badbx = np.argmin(sq_errs[mx])
-#   gtu.arprint(ins[badbx,0:7]+ errs[mx,badbx])
 
 infl_map_hh = []; infl_map_h =[ ];
 infl_map_cc = []; infl_map_c = [];
@@ -109,20 +67,13 @@ def influence_map(infl_sort, grads):
     for mx in range(12):
       for ix in mm_ix:
        gradix = infl_sort[bx,mx,ix]
-       x_ = gradix  + ((np.random.rand() - 0.5)/2.0)
-       y_ = mx + ((np.random.rand() - 0.5)/1.33)
-       z_ = grads[bx, mx, gradix]
        if ix == 0:
-         infl_map_cc.append([x_, y_, z_])
          infl_ct_cc[gradix] += 1
        elif ix==2 or ix == 1:
-         infl_map_c.append([x_, y_, z_])
          infl_ct_c[gradix] += 1
        elif ix ==  x_size-1:
-         infl_map_hh.append([x_, y_, z_])
          infl_ct_hh[gradix] += 1
-       else:
-         infl_map_h.append([x_, y_, z_])
+       elif ix == x_size - 2: 
          infl_ct_h[gradix] += 1
 
 
@@ -278,41 +229,14 @@ sen_histo = np.histogram(test_map[:,34], bins=20)
 print('histo')
 print(zip(sen_histo[0], sen_histo[1][0:-1]))
 
-infl_map_cc = np.array(infl_map_cc)
-infl_map_c = np.array(infl_map_c)
-infl_map_h = np.array(infl_map_h)
-infl_map_hh = np.array(infl_map_hh)
-print('influence map dT/dfeat max min')
-print(infl_map_cc[:,2].min(), infl_map_cc[:,2].max())
-print(infl_map_hh[:,2].min(), infl_map_hh[:,2].max())
-print(infl_map_c[:,2].min(), infl_map_c[:,2].max())
-print(infl_map_h[:,2].min(), infl_map_h[:,2].max())
+
 print('influence count  dT/dfeat ')
 print(pstr)
 print(infl_ct_cc)
 print(infl_ct_c)
 print(infl_ct_h)
 print(infl_ct_hh)
-#infl_norm = matplotlib.colors.Normalize(vmin=-50.0, vmax=50.0)
-#finfl, ainfl = mapper(infl_map[:,0], infl_map[:,1], infl_map[:,2], 'coolwarm', \
- #               'top influencers by month  up and down', \
-#                infl_norm)
-inf_scatx = [infl_map_hh[:,0], infl_map_c[:,0],infl_map_h[:,0],infl_map_cc[:,0]]
-inf_scaty = [infl_map_hh[:,1], infl_map_c[:,1],infl_map_h[:,1],infl_map_cc[:,1]]
-inf_cs = ['r', 'g', 'orange', 'b']
-finfl, ainfl = plt.subplots(1)
-finfl.subplots_adjust(top=0.95, bottom=0.1, left=0.2, right=0.99)
-finfl.suptitle('top influencers by month  up and down')
-for ax in range(4):
- ainfl.scatter(inf_scatx[ax], inf_scaty[ax], s=1, c=inf_cs[ax],marker=',', cmap=None, norm=None)
 
-addnote(finfl)
-
-ainfl.xaxis.set_ticks(range(x_size))
-ainfl.xaxis.set_ticklabels(imap_lbls)
-ainfl.xaxis.set_tick_params(labelsize=6.0)
-ainfl.yaxis.set_ticks(range(12))
-ainfl.yaxis.set_ticklabels(['J','F','M','A','M','j','J','A','S','O','N','D'])
 
 fig_inf_ct, axe_inf_ct = plt.subplots(2,1)
 fig_inf_ct.suptitle('tf.climate meta-model number 1 and 2 gradients, hot and cold count by normalized feature')
@@ -325,22 +249,18 @@ axe_inf_ct[1].xaxis.set_ticks(range(x_size))
 axe_inf_ct[1].xaxis.set_ticklabels(imap_lbls)
 axe_inf_ct[0].xaxis.set_ticks(range(x_size))
 axe_inf_ct[0].xaxis.set_ticklabels(imap_lbls)
-addnote(fig_inf_ct)
+fig_inf_ct = addnote(fig_inf_ct, params)
 
 fig21, axe21 = plt.subplots(1)
-fig21.suptitle('sensitivity distribution')
+fig21.suptitle('albedo corrected sensitivity distribution')
 axe21.bar(range(len(sen_histo[0])), sen_histo[0], align='center', )
 ticklbls = []
 for ix in range(len(sen_histo[1][0:-1])):
   ticklbls.append( str(round(sen_histo[1][ix+1], 3)))
 axe21.xaxis.set_ticks(range(len(ticklbls)))
 axe21.xaxis.set_ticklabels(ticklbls)
+fig21 = addnote(fig21, params)
 
-
-
-
-
-# [-1.0,-0.5,-0.4,-0.3,-0.2,-0.1,0.0,0.1,0.2,0.3,0.4]
 
 sen_normalize = matplotlib.colors.Normalize(vmin=-0.3, vmax=0.3)
 err_normalize = matplotlib.colors.Normalize(vmin=-3.0, vmax=3.0)
@@ -350,18 +270,18 @@ chds = ['mean', 'max', 'min','mse','0.5','1.0']
 mm_errs = np.transpose(np.array(mm_errs))
 
 ft1, at1 = plotter(mm_errs, 'dual train RNN+NN meta model errors', lbls=chds )
-ft1 = addnote(ft1)
+ft1 = addnote(ft1, params)
 
 
 f3, a3 = mapper(test_map[:,0], test_map[:,1], test_map[:,33], 'coolwarm', \
                 'overall error map from test data w 0.5 deg C mse', \
                 err_normalize)
-addnote(f3)
+f3 = addnote(f3,params)
 
 f2, a2 = mapper(test_map[:,0], test_map[:,1], test_map[:,34], 'coolwarm', \
-              'sensitivity map from test data w 0.5 deg C mse', \
+              'albedo corrected sensitivity map', \
                 sen_normalize)
-addnote(f2)
+f2 = addnote(f2, params)
 
 if True:
   f4, a4 = scat(test_map[:,4], test_map[:,34], 'k', None, \
