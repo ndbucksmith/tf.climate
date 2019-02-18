@@ -26,7 +26,7 @@ copyright 2019 Nelson 'Buck' Smith
 
 target = 'wc_v2test'
 file_ct = len(os.listdir(target))
-mdl_path = 'mdls/nn3031cs50'
+mdl_path = 'mdls/nn3031cs60walb'
 if True:
   with open(mdl_path +'/params.json', 'r') as fi:
     params = json.load(fi)
@@ -75,7 +75,6 @@ def influence_map(infl_sort, grads):
          infl_ct_hh[gradix] += 1
        elif ix == x_size - 2: 
          infl_ct_h[gradix] += 1
-
 
 def examp_plot(bx, name):
   f_ex, a_ex = plt.subplots(4,1)
@@ -253,6 +252,7 @@ fig_inf_ct = addnote(fig_inf_ct, params)
 
 fig21, axe21 = plt.subplots(1)
 fig21.suptitle('albedo corrected sensitivity distribution')
+pst()
 axe21.bar(range(len(sen_histo[0])), sen_histo[0], align='center', )
 ticklbls = []
 for ix in range(len(sen_histo[1][0:-1])):
