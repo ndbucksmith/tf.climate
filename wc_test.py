@@ -221,7 +221,7 @@ for mcx in range(1):
       f1sens.text(0.2, 0.8, 'units are degree C/wm2', transform=plt.gcf().transFigure)
       plt.show()
 
-pst()
+
 test_map = np.array(test_map)
 tm_ch_list = wcb.nn_features  +['err1','err3','err3','err4','err5','err6','err7','err8','err8','err10','err11','err12','oa_err', \
                                 'dTdP1','dTdP2','dTdP3','dTdP4','dTdP5','dTdP6','dTdP7','dTdP8','dTdP9','dTdP10','dTdP11','dTdP12',  \
