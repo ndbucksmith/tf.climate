@@ -18,7 +18,7 @@ pst = pdb.set_trace
 """
 tests with batches from segregated test data set
 prints many graphs
-graph code needs refactoring
+this code is awkward due to need to handle models with different channel maps
 
 copyright 2019 Nelson 'Buck' Smith
 
@@ -51,7 +51,7 @@ wc_start = len(params['take'])
 gs_radx = take.index(2)  #index used for wiggle jiggle sensitivity
 wc_radx = take.index(8)
 alb_ix =  wc_start-1
-
+prec_x = take.index(7)
 assert wcb.nn_features[take[gs_radx]]  == 'gsra'
 assert wcb.nn_features[take[wc_radx]]  == 'sra_'
 assert wcb.nn_features[take[alb_ix]]  == 'alb'
@@ -101,7 +101,7 @@ if True:
   for var, val in zip(tvars, tvars_vals):
     print(var.name,var.shape)
 print(val)
-#pdb.set_trace()
+
 test_map = []
 left = 0.05
 bottom = 0.05 
@@ -111,18 +111,14 @@ mm_errs = [];
 for mcx in range(1):
 
   for tx in range(file_ct):
-
-    if False:
-      ins, trus = gtb.get_batch(params['batch_size'], True)
-    else:
-      with open('wc_v2test/wcb_' + str(tx) + '.pkl', 'r') as fi:
-        dc = pickle.load(fi)
-        ins = dc['ins']
-        app = []
-        rsqs =  np.array(dc['rnn_seqs'])
-        wc_trus = dc['ec_tru']  #alternative verion of reality, man
-        rn_trus =  dc['rnn_trus']
-        trus = dc['trus']
+    with open('wc_v2test/wcb_' + str(tx) + '.pkl', 'r') as fi:
+      dc = pickle.load(fi)
+      ins = dc['ins']
+      app = []
+      rsqs =  np.array(dc['rnn_seqs'])
+      wc_trus = dc['ec_tru']  #alternative verion of reality, man
+      rn_trus =  dc['rnn_trus']
+      trus = dc['trus']
 
 #_______feed, fetch, and run
     feed = rmdl.bld_multiyearfeed(1, ins, rsqs, rn_trus, wc_trus)
@@ -186,6 +182,11 @@ for mcx in range(1):
     feed[rmdl.xin][:,:,gs_radx] = feed[rmdl.xin][:,:,gs_radx] + watts
     feed[rmdl.xin][:,:,wc_radx] = feed[rmdl.xin][:,:,wc_radx] +  (watts*75.0)
     feed[rmdl.xin][:,:,wc_start] = feed[rmdl.xin][:,:,wc_start] + (watts*75.0)
+    feed[rmdl.xin][:,:,7] = feed[rmdl.xin][:,:,7] * 0.95
+    feed[rmdl.xin][:,:,wc_start+1] = feed[rmdl.xin][:,:,wc_start+1] * 0.95
+
+
+    
     # fetch temperature estimates with extra power added in from tf session run
     d_sq_errs, d_ests, d_yt, dmeta_h, dmeta_err, d_meta_yt,d_dodis, d_dodins = sess.run(fetch, feed)
     # calculate sensitivity tosurface  solar power
@@ -200,9 +201,9 @@ for mcx in range(1):
 
 # ____________ make the test map    
     for bx in range(b_size):
-      test_map.append(np.concatenate( (ins[bx,0:7],errs[:,bx,0],overall_errs[bx], \
+      test_map.append(np.concatenate( (ins[bx,0:], [feed[rmdl.xin][bx,0,alb_ix]], errs[:,bx,0], overall_errs[bx], \
                                        dTdP[:,bx,0], [dTdP[:,bx,0].mean()],meta_errs[bx],  \
-                                       meta_dTdP[bx],meta_yt[bx], meta_ests[bx], [bx], [tx]) ))
+                                       meta_dTdP[bx],meta_yt[bx],meta_ests[bx], [bx], [tx]) ))
 
 
   #  f_expH, a_exHp = examp_plot(meta_errs.argmax(), 'model hot error')
@@ -220,8 +221,22 @@ for mcx in range(1):
       f1sens.text(0.2, 0.8, 'units are degree C/wm2', transform=plt.gcf().transFigure)
       plt.show()
 
-
+pst()
 test_map = np.array(test_map)
+tm_ch_list = wcb.nn_features  +['err1','err3','err3','err4','err5','err6','err7','err8','err8','err10','err11','err12','oa_err', \
+                                'dTdP1','dTdP2','dTdP3','dTdP4','dTdP5','dTdP6','dTdP7','dTdP8','dTdP9','dTdP10','dTdP11','dTdP12',  \
+                                'dTdP','meta_err','meta_dTdP','meta_yt', 'meta_est', 'bx','tx']
+assert len(tm_ch_list) == test_map.shape[1]
+
+def tm_xyz(xch,ych,tm, zch=None):
+  xix = tm_ch_list.index(xch)
+  yix = tm_ch_list.index(ych)
+  if zch:
+    zix = tm_ch_list.index(zch)
+    return tm[:,xix], tm[:,yix], tm[:,zix]
+  else:
+    return tm[:,xix], tm[:,yix]
+                                
 print('test map dataset shape, max and min sensitivty, count negative')
 print(test_map.shape, test_map[:,34].max(), test_map[:,34].min(), (test_map[:,34] < 0.0).sum())
 sen_histo = np.histogram(test_map[:,34], bins=20)
@@ -251,14 +266,15 @@ axe_inf_ct[0].xaxis.set_ticklabels(imap_lbls)
 fig_inf_ct = addnote(fig_inf_ct, params)
 
 fig21, axe21 = plt.subplots(1)
-fig21.suptitle('albedo corrected sensitivity distribution')
-pst()
+fig21.suptitle('albedo corrected downward vis sensitivity distribution')
 axe21.bar(range(len(sen_histo[0])), sen_histo[0], align='center', )
 ticklbls = []
-for ix in range(len(sen_histo[1][0:-1])):
-  ticklbls.append( str(round(sen_histo[1][ix+1], 3)))
+for ix in range(len(sen_histo[1])):
+  ticklbls.append( str(round(sen_histo[1][ix], 3)))
 axe21.xaxis.set_ticks(range(len(ticklbls)))
 axe21.xaxis.set_ticklabels(ticklbls)
+
+axe21.xaxis.set_label_text('degree C / watt per meter square')
 fig21 = addnote(fig21, params)
 
 
@@ -272,43 +288,46 @@ mm_errs = np.transpose(np.array(mm_errs))
 ft1, at1 = plotter(mm_errs, 'dual train RNN+NN meta model errors', lbls=chds )
 ft1 = addnote(ft1, params)
 
-
-f3, a3 = mapper(test_map[:,0], test_map[:,1], test_map[:,33], 'coolwarm', \
-                'overall error map from test data w 0.5 deg C mse', \
-                err_normalize)
+exx, wye, zee =  tm_xyz('lon','lat',test_map, zch='oa_err')
+f3, a3 = mapper(exx, wye, zee, 'coolwarm', 'overall error map from test data w 0.5 deg C mse', err_normalize)
 f3 = addnote(f3,params)
 
-f2, a2 = mapper(test_map[:,0], test_map[:,1], test_map[:,34], 'coolwarm', \
-              'albedo corrected sensitivity map', \
-                sen_normalize)
+exx, wye, zee =  tm_xyz('lon','lat',test_map, zch='meta_dTdP')
+f2, a2 = mapper(exx, wye, zee,'coolwarm', 'albedo corrected sensitivity map', sen_normalize)
 f2 = addnote(f2, params)
 
 if True:
-  f4, a4 = scat(test_map[:,4], test_map[:,34], 'k', None, \
-                'sensitivity v elevation', None)
+  exx, wye =  tm_xyz('elev','meta_dTdP',test_map,)
+  f4, a4 = scat(exx, wye, 'k', None, 'sensitivity v elevation', None)
+  a4.xaxis.set_label_text('degree C / watt per meter square')
 
-  f5, a5 = scat(test_map[:,1], test_map[:,34],'k', None, \
-                'sensitivity v latutude', None)
+#  f5, a5 = scat(test_map[:,1], test_map[:,34],'k', None, \
+#                'sensitivity v latutude', None)
+#  a5.xaxis.set_label_text('degree C / watt per meter square')
 
 if False:
-  f6, a6 =  scat(test_map[:,2], test_map[:,32], test_map[:,32], 'RdBu', \
+  f6, a6 =  scat(test_map[:,gs_radx], test_map[:,35], test_map[:,32], 'RdBu', \
               'sensitivity v surf sol', sen_normalize)
 if True:
-  f7, a7 =  scat(test_map[:,32], test_map[:,33], 'k', None, \
-                 'sensitivity v error', None)
+  exx, wye =  tm_xyz('meta_err','meta_dTdP', test_map,)
+  f7, a7 =  scat(exx, wye, 'k', None, 'sensitivity v error', None)
+  a7.yaxis.set_label_text('degree C / watt per meter square')
+  
+  exx, wye =  tm_xyz('pre_','meta_dTdP', test_map,)  
+  f7a, a7a =  scat(exx, wye, 'k', None, 'sensitivity v annual precipitation', None)
+  a7a.yaxis.set_label_text('degree C / watt per meter square')
 
 if False:
-  f8, a8 = scat(test_map[:,1], test_map[:,33], test_map[:,33], 'RdBu', \
+  f8, a8 = scat(test_map[:,1], test_map[:,36], test_map[:,36], 'RdBu', \
               'error v latutude', err_normalize)
 
-  f9, a9 = scat(test_map[:,4], test_map[:,33], test_map[:,33], 'RdBu', \
+  f9, a9 = scat(test_map[:,4], test_map[:,36], test_map[:,36], 'RdBu', \
               'error v elevation', err_normalize)
 
-ffreeze, axfreeze = scat(test_map[:,35], test_map[:,34], test_map[:,34], 'RdBu', \
+ffreeze, axfreeze = scat(test_map[:,38], test_map[:,37], test_map[:,34], 'RdBu', \
               'sensitivity v Trutemp', sen_normalize)
-
-fyt, axtt = scat(test_map[:,35], test_map[:,36], 'k', None, \
-                 'model est v Trutemp', None)
+exx, wye =  tm_xyz('meta_est','meta_yt', test_map,)
+fyt, axtt = scat(exx, wye, 'k', None, 'model est v Trutemp', None)
 
 plt.show()
 
