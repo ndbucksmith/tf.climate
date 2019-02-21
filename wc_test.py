@@ -26,7 +26,7 @@ copyright 2019 Nelson 'Buck' Smith
 
 target = 'wc_v2test'
 file_ct = len(os.listdir(target))
-mdl_path = 'mdls/nn3031cs60walb'
+mdl_path = 'mdls/nn5051cs72xlatlon'
 if True:
   with open(mdl_path +'/params.json', 'r') as fi:
     params = json.load(fi)
@@ -182,8 +182,8 @@ for mcx in range(1):
     feed[rmdl.xin][:,:,gs_radx] = feed[rmdl.xin][:,:,gs_radx] + watts
     feed[rmdl.xin][:,:,wc_radx] = feed[rmdl.xin][:,:,wc_radx] +  (watts*75.0)
     feed[rmdl.xin][:,:,wc_start] = feed[rmdl.xin][:,:,wc_start] + (watts*75.0)
-    feed[rmdl.xin][:,:,7] = feed[rmdl.xin][:,:,7] * 0.95
-    feed[rmdl.xin][:,:,wc_start+1] = feed[rmdl.xin][:,:,wc_start+1] * 0.95
+  #  feed[rmdl.xin][:,:,7] = feed[rmdl.xin][:,:,7] * 0.95
+  #  feed[rmdl.xin][:,:,wc_start+1] = feed[rmdl.xin][:,:,wc_start+1] * 0.95
 
 
     
@@ -192,8 +192,9 @@ for mcx in range(1):
     # calculate sensitivity tosurface  solar power
     dTdP = (d_ests - ests)/watts  # in unit degreeC per watt per meter square
     meta_dTdP = (dmeta_h - meta_ests)/watts
-
+     #correct for albedo
     meta_dTdP = meta_dTdP /  (1-np.reshape(feed[rmdl.xin][:,0,alb_ix], (400,1)))
+         
     print('power sensitivity - mean, max, min, stdev, count negative')
     gtu.arprint([dTdP.mean(), dTdP.max(), dTdP.min(), dTdP.std(), (dTdP < 0.0).sum()])
     gtu.arprint([meta_dTdP.mean(), meta_dTdP.max(), meta_dTdP.min(), meta_dTdP.std(), (meta_dTdP < 0.0).sum()])
@@ -201,6 +202,8 @@ for mcx in range(1):
 
 # ____________ make the test map    
     for bx in range(b_size):
+      assert feed[rmdl.xin][bx,0,alb_ix] > 0.0
+      assert feed[rmdl.xin][bx,0,alb_ix] < 0.8    
       test_map.append(np.concatenate( (ins[bx,0:], [feed[rmdl.xin][bx,0,alb_ix]], errs[:,bx,0], overall_errs[bx], \
                                        dTdP[:,bx,0], [dTdP[:,bx,0].mean()],meta_errs[bx],  \
                                        meta_dTdP[bx],meta_yt[bx],meta_ests[bx], [bx], [tx]) ))

@@ -22,10 +22,7 @@ def plotter(plts, name, lbls):
   ax_.legend()  
   return fi_, ax_
 
-
-
-wet = 0.0
-dry = 1.0
+wet = 0.0; dry = 1.0
 ir_back_co2_mean = 0.05
 ir_back_h20_mean = 1 - ir_back_co2_mean
 ir_back_h20_dry = ir_back_h20_mean - (ir_back_co2_mean *0.3)
@@ -38,7 +35,7 @@ vis_dry = 1.0 - ir_back_h20_dry - ir_back_co2_mean
 
 plotz = [[ ir_back_h20_dry, ir_back_h20_wet],
          [ cloud_refl_dry, cloud_refl_wet],
-         [ vis_dry, vis.wet]]
-
-fi , ax = ploter(plotx, "wet-dry", ['wet','dry'])
+         [ vis_dry, vis_wet]]
+#pst()
+fi , ax = plotter(plotz, "wet-dry", ['h20','cloud', 'vis'])
 plt.show()

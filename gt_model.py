@@ -169,27 +169,6 @@ class climaRNN():
     self.vl = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
     self.sv1 = tf.train.Saver()
  
-#deprecated
-  def bld_feed(self, ins, rins, rn_trus):
-    fd ={}
-    static_ins = ins[:,1:]
-    static_norms = wcb.nn_norms[1:]
-    static_12mo = []
-    rn_trus = np.reshape(np.array(rn_trus), (-1,12,1))
-    #pdb.set_trace()
-    for mx in range(12):
-      static_12mo.append(static_ins)
-      fd[self.y_trues[mx]] = rn_trus[:,mx]
-    rins_swap = np.swapaxes(rins, 1, 2)
-    stat_swap = np.swapaxes(static_12mo, 0, 1)
-    full_rinset = np.concatenate((stat_swap, rins_swap), axis=2)
-    full_normset = np.concatenate((static_norms, wcb.rnn_norms))
-    fd[self.xin] = full_rinset
-    fd[self.norms] = full_normset
-    #pdb.set_trace()
-    return fd
-
-
   
   def bld_multiyearfeed(self, yrs, ins, rins, rn_trus, me_trus):
     fd ={}

@@ -27,16 +27,16 @@ copyright 2019 Nelson 'Buck' Smith
 params = {}
 params['batch_size'] = 400
 b_size = params['batch_size']
-params['pref_width'] = 30
-params['metaf_width'] = 31
-params['mdl_path'] = 'mdls/nn3031cs50'
+params['pref_width'] = 50
+params['metaf_width'] = 51
+params['mdl_path'] = 'mdls/nn5051cs72xlatlon'
 params['learn_rate'] = 0.05
 params['init_stddev'] = 0.05
-params['take'] = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 19, 20]
+params['take'] = [2,3,4,5,6,7,8,9,10,11,12,13,14,15, 19, 20]
 params['rnn_take'] = [0,1,2,3]
 take = params['take']
 params['yrly_size'] = len(params['take'])  #number of static once per year chanels
-params['cell_size'] =  50
+params['cell_size'] =  72
 params['rxin_size'] = len(take) + len(params['rnn_take'])  # mdl uses this as rmdl.xin_size
 pstr = "training with: "
 for idx in range(len(params['take'])):

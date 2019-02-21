@@ -11,6 +11,7 @@ import gt_utils as gtu
 import gt_model as gtm
 import wc_batcher as wcb
 import os
+import json
 pst = pdb.set_trace
 
 """
@@ -144,7 +145,22 @@ for mcx in range(1):
       gtu.arprint([trus_min, trus_max])   
 
 
-pst()
+dc = {}
+dc['nn_feats'] = wcb.nn_features
+dc['rf_feats'] = wcb.rnn_features
+dc['ins_maxes'] = ins_maxes
+dc['ins_mins'] = ins_mins
+dc['rn_maxes'] = rn_maxes
+dc['rn_mins'] = rn_mins
+dc['rn_maxes'] = rn_maxes
+dc['rn_true'] = [rn_trumin, rn_trumax]
+dc['wc_true'] = [wc_trus_min, wc_trus_max]
+dc['gs_true'] = [trus_min, trus_max]
+
+
+with open('testdata/normbook.json', 'w') as fo:
+  json.dump(dc, fo)
+
 
 fig1, axe1 = scat(wc_trus_cat, trus_cat, 'k', cmp=None, name='Global Solar vs worldclim.org average temp', nrm=None)
 plt.show()

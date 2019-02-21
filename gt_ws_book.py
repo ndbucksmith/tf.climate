@@ -10,6 +10,8 @@ import gt_utils as gtu
 """
 create pkl files with dicts for each window
 """
+targ = 'winstats2'
+
 elds = rio.open('wcdat/ELE.tif')
 hids = rio.open('wcdat/GHI.tif')
 teds = rio.open('wcdat/TEMP.tif')
@@ -57,7 +59,7 @@ for _start in range(0, 105, 5):
   print(badct)
   print(bads)
     #pdb.set_trace()
-  with open('winstats/book_' + str(_start) + '.pkl', 'w') as fo:
+  with open( targ+ '/book_' + str(_start) + '.pkl', 'w') as fo:
     dmp = pickle.dumps(dc)
     fo.write(dmp)
   traincts.append(trainct)
@@ -68,7 +70,7 @@ testcts = np.array(testcts)
 traincts = np.array(traincts)
 dc['testcts'] = testcts
 dc['traincts'] = traincts
-with open('winstats/summary_cts.pkl', 'w') as fo:
+with open(targ +'/summary_cts.pkl', 'w') as fo:
     dmp = pickle.dumps(dc)
     fo.write(dmp)
 print(dc)

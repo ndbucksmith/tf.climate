@@ -29,6 +29,7 @@ copyright 2019 Nelson 'Buck' Smith
 
 """
 # four rows - r1 ct 9 slice 0:9, r2 ct 3 slice 9:12, r3 ct8 slice 12:20, r4 ct1 slice 20
+# total of annual features = 9+3+8+1 = 21
 nn_features = ['lon', 'lat', 'gsra', 'toa_', 'elev', 'barp', 's/t', 'pre_', 'sra_', \
              'land', 'wat', 'ice', \
                'sh', 'nh', 'rast', 'elst', 'zs', 'gtzs', 'ltzs', 'win_', \
