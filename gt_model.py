@@ -219,28 +219,7 @@ class climaRNN():
       print(var.name, var.shape)
     print(val)
     
-   # https://www.timeanddate.com/weather/antarctica/south-pole/climate 
-  def southPole():
-    pwr_ratio = 0.8; lat=89.5; lon=10.0;
-    tru12 = np.array([-14.0, -37.0, -57.0, -67.0, -66.0, -64.0, -67.0, -66.0, -71.0, -59.0, -33.0, -16.0])
-    wc_temp = gtu.acc12moavg(tru12); temp = wc_temp, ex_good = True;
-    toa_12 = np.array(gtu.toa_series(-89.5))    
-    srad12 = toa_12 * pwr_ratio * 75.0
-    prec12 = [0.36, 0.23, 0.17, 0.17, 0.22, 0.21, 0.17, 0.17, 0.14, 0.11, 0.09, 0.23] #this is inches
-    wind12 = [11, 11, 12, 13, 13, 13, 15, 14, 13, 13, 12, 11, 10]   # this is mph
-    gtu.acc12mo_avg
-    elev = 5000/3.1
-    elev_std = 50.0
-    vis_dstd = np.nanstd(hi) * 1000.0 / 24
-    gtzs = 400; ltzs = 0;  zs =  0; 
-    vis_down = gtu.acc12moavg(toa_12) * pwr_ratio
-    wc_srad = vis_down * 75.0
-    land=0.0; water = 0.0; ice=1.0; sh1h=1.0; nh1h=0.0
-    
-    ins = [lon, lat, vis_down, toa_pwr, elev, barop, pwr_ratio, wc_prec, wc_srad, land, water, ice, \
-         sh1h, nh1h, vis_dstd, elev_std, zs, gtzs, ltzs, wc_wind]  
-    return np.array(ins), temp, ex_good, rnn_seq, temp_12mo, wc_temp
-    
+ 
 
 def weightSet(name, shape):
   wt = tf.get_variable(name+'_wt', None, tf.float32, tf.random_normal(shape, stddev=0.01))

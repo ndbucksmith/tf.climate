@@ -6,6 +6,7 @@ import pickle
 import pdb
 import math
 import gt_utils as gtu
+pst = pdb.set_trace
 
 """
 read geotiff files and generate a batch of examples
@@ -279,6 +280,33 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
   return np.array(ins), temp, ex_good, rnn_seq, temp_12mo, wc_temp
 
 
+
+ # https://www.timeanddate.com/weather/antarctica/south-pole/climate 
+def southPole():
+  pwr_ratio = 0.8; lat=89.5; lon=10.0;
+  temp_12mo = np.array([-14.0, -37.0, -57.0, -67.0, -66.0, -64.0, -67.0, -66.0, -71.0, -59.0, -33.0, -16.0])
+  wc_temp = gtu.acc12mo_avg(temp_12mo); temp = wc_temp; ex_good = True;
+  toa_12 = np.array(gtu.toa_series(-89.999))
+  toa_pwr = gtu.acc12mo_avg(toa_12)
+  srad12 = toa_12 * pwr_ratio * 75.0
+  prec12 =np.array([0.36, 0.23, 0.17, 0.17, 0.22, 0.21, 0.17, 0.17, 0.14, 0.11, 0.09, 0.23]) * 25.4 #inches > mm
+  wind12 = np.array([11, 12, 13, 13, 13, 15, 14, 13, 13, 12, 11, 10])*0.1   # this is mph?? does nto seem right
+  elev = 5000/3.1
+  elev_std = 50.0
+  vis_dstd = 5.0
+  gtzs = 400; ltzs = 0;  zs =  0; 
+  vis_down = gtu.acc12mo_avg(toa_12) * pwr_ratio
+  wc_srad = vis_down * 75.0
+  wc_prec = gtu.acc12mo_avg(prec12)
+  wc_wind = gtu.acc12mo_avg(wind12)
+  land=0.0; water = 0.0; ice=1.0; sh1h=1.0; nh1h=0.0
+  barop = gtu.bp_byalt(elev)
+  rnn_seq = [srad12, prec12, toa_12, wind12]
+  ins = [lon, lat, vis_down, toa_pwr, elev, barop, pwr_ratio, wc_prec, wc_srad, land, water, ice, \
+         sh1h, nh1h, vis_dstd, elev_std, zs, gtzs, ltzs, wc_wind]  
+  return np.array(ins), temp, ex_good, rnn_seq, temp_12mo, wc_temp
+    
+
 def get_batch(size, bTrain):
   ins_bat = []; trus_bat = []; rnn_seqs=[];
   wc_trs=[]; rnn_trus = [];   
@@ -299,6 +327,21 @@ def get_batch(size, bTrain):
   return np.array(ins_bat), np.array(trus_bat), rnn_seqs, wc_trs, rnn_trus  
 
 
+def sPole_batch(size, bTrain):
+  ins_bat = []; trus_bat = []; rnn_seqs=[];
+  wc_trs=[]; rnn_trus = [];  
+  ins, temp, b_g, r_s, t_12, wc_t = southPole()
+  for ix in range(size):    
+    ins_bat.append(ins)
+    trus_bat.append(temp)
+    rnn_seqs.append(r_s)
+    wc_trs.append(wc_t)
+    rnn_trus.append(t_12)
+  return np.array(ins_bat), np.array(trus_bat), rnn_seqs, wc_trs, rnn_trus  
 
+
+
+
+    
 #ins, gt_trues, r_sqs, wctrs, rnn_trus = get_batch(1004, True)
 #pdb.set_trace()

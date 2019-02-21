@@ -23,9 +23,10 @@ this code is awkward due to need to handle models with different channel maps
 copyright 2019 Nelson 'Buck' Smith
 
 """
-
+southPoleTest = True
 target = 'wc_v2test'
 file_ct = len(os.listdir(target))
+if southPoleTest: file_ct = 1;
 mdl_path = 'mdls/nn5051cs72xlatlon'
 if True:
   with open(mdl_path +'/params.json', 'r') as fi:
@@ -111,14 +112,18 @@ mm_errs = [];
 for mcx in range(1):
 
   for tx in range(file_ct):
-    with open('wc_v2test/wcb_' + str(tx) + '.pkl', 'r') as fi:
-      dc = pickle.load(fi)
-      ins = dc['ins']
-      app = []
-      rsqs =  np.array(dc['rnn_seqs'])
-      wc_trus = dc['ec_tru']  #alternative verion of reality, man
-      rn_trus =  dc['rnn_trus']
-      trus = dc['trus']
+    pst()
+    if southPoleTest:
+      ins, trus, rsqs, wc_trus, rn_trus = wcb.sPole_batch(400, True)
+    else:  
+      with open('wc_v2test/wcb_' + str(tx) + '.pkl', 'r') as fi:
+        dc = pickle.load(fi)
+        ins = dc['ins']
+        app = []
+        rsqs =  np.array(dc['rnn_seqs'])
+        wc_trus = dc['ec_tru']  #alternative verion of reality, man
+        rn_trus =  dc['rnn_trus']
+        trus = dc['trus']
 
 #_______feed, fetch, and run
     feed = rmdl.bld_multiyearfeed(1, ins, rsqs, rn_trus, wc_trus)
@@ -177,15 +182,19 @@ for mcx in range(1):
         axes[3].plot([1,2,3,4,5,6,7,8,9,10,11,12], errs[:,bx])
     print('location plus top 5 features for worst errors')
 
-    #add some wiggle and check the jiggle.  
-    watts = 3.7  # add to global solar srad as watts and wc 12 month and monthly in their wacky units
-    feed[rmdl.xin][:,:,gs_radx] = feed[rmdl.xin][:,:,gs_radx] + watts
-    feed[rmdl.xin][:,:,wc_radx] = feed[rmdl.xin][:,:,wc_radx] +  (watts*75.0)
-    feed[rmdl.xin][:,:,wc_start] = feed[rmdl.xin][:,:,wc_start] + (watts*75.0)
-  #  feed[rmdl.xin][:,:,7] = feed[rmdl.xin][:,:,7] * 0.95
-  #  feed[rmdl.xin][:,:,wc_start+1] = feed[rmdl.xin][:,:,wc_start+1] * 0.95
+    #add some wiggle and check the jiggle.
+    def wiggle_power(wig):
+      # add to global solar srad as watts and wc 12 month and monthly in their wacky units
+      feed[rmdl.xin][:,:,gs_radx] = feed[rmdl.xin][:,:,gs_radx] + wig
+      feed[rmdl.xin][:,:,wc_radx] = feed[rmdl.xin][:,:,wc_radx] +  (wig*75.0)
+      feed[rmdl.xin][:,:,wc_start] = feed[rmdl.xin][:,:,wc_start] + (wig*75.0)
 
-
+    def wiggle_prep(factr):
+      feed[rmdl.xin][:,:,7] = feed[rmdl.xin][:,:,7] * factr
+      feed[rmdl.xin][:,:,wc_start+1] = feed[rmdl.xin][:,:,wc_start+1] * factr
+      
+    watts=3.7
+    wiggle_power(wig=watts)
     
     # fetch temperature estimates with extra power added in from tf session run
     d_sq_errs, d_ests, d_yt, dmeta_h, dmeta_err, d_meta_yt,d_dodis, d_dodins = sess.run(fetch, feed)
@@ -224,7 +233,7 @@ for mcx in range(1):
       f1sens.text(0.2, 0.8, 'units are degree C/wm2', transform=plt.gcf().transFigure)
       plt.show()
 
-
+pst()
 test_map = np.array(test_map)
 tm_ch_list = wcb.nn_features  +['err1','err3','err3','err4','err5','err6','err7','err8','err8','err10','err11','err12','oa_err', \
                                 'dTdP1','dTdP2','dTdP3','dTdP4','dTdP5','dTdP6','dTdP7','dTdP8','dTdP9','dTdP10','dTdP11','dTdP12',  \

@@ -147,19 +147,26 @@ for mcx in range(1):
 
 dc = {}
 dc['nn_feats'] = wcb.nn_features
-dc['rf_feats'] = wcb.rnn_features
-dc['ins_maxes'] = ins_maxes
-dc['ins_mins'] = ins_mins
+dc['rn_feats'] = wcb.rnn_features
+dc['ins_maxes'] = ins_maxes.tolist()
+dc['ins_mins'] = ins_mins.tolist()
 dc['rn_maxes'] = rn_maxes
 dc['rn_mins'] = rn_mins
-dc['rn_maxes'] = rn_maxes
-dc['rn_true'] = [rn_trumin, rn_trumax]
+dc['rn_true'] =  [rn_trumin, rn_trumax]
 dc['wc_true'] = [wc_trus_min, wc_trus_max]
 dc['gs_true'] = [trus_min, trus_max]
 
 
-with open('testdata/normbook.json', 'w') as fo:
+with open('test_data/normbook.json', 'w+') as fo:
   json.dump(dc, fo)
+
+wc_trus_cat = np.array(wc_trus_cat)
+trus_cat = np.array(trus_cat)
+err = wc_trus_cat -trus_cat
+sqerr = err * err
+print('true temp errs: min, mean, max, stdev, mse')
+print(err.min(), err.mean(), err.max(), err.std(), sqerr.mean())
+ # (-6.355519204792465, -0.047598108296106834, 7.118440377724784, 1.2025000335990614, 1.4482719107191118)
 
 
 fig1, axe1 = scat(wc_trus_cat, trus_cat, 'k', cmp=None, name='Global Solar vs worldclim.org average temp', nrm=None)
