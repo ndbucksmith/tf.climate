@@ -23,11 +23,13 @@ this code is awkward due to need to handle models with different channel maps
 copyright 2019 Nelson 'Buck' Smith
 
 """
-southPoleTest = True
+southPoleTest = False
+
+wc_radCon = 86.4 # kJm-2/day > watts m-2
 target = 'wc_v2test'
 file_ct = len(os.listdir(target))
 if southPoleTest: file_ct = 1;
-mdl_path = 'mdls/nn5051cs72xlatlon'
+mdl_path = 'mdls/nn3031cs60walb'
 if True:
   with open(mdl_path +'/params.json', 'r') as fi:
     params = json.load(fi)
@@ -112,7 +114,7 @@ mm_errs = [];
 for mcx in range(1):
 
   for tx in range(file_ct):
-    pst()
+
     if southPoleTest:
       ins, trus, rsqs, wc_trus, rn_trus = wcb.sPole_batch(400, True)
     else:  
@@ -186,8 +188,8 @@ for mcx in range(1):
     def wiggle_power(wig):
       # add to global solar srad as watts and wc 12 month and monthly in their wacky units
       feed[rmdl.xin][:,:,gs_radx] = feed[rmdl.xin][:,:,gs_radx] + wig
-      feed[rmdl.xin][:,:,wc_radx] = feed[rmdl.xin][:,:,wc_radx] +  (wig*75.0)
-      feed[rmdl.xin][:,:,wc_start] = feed[rmdl.xin][:,:,wc_start] + (wig*75.0)
+      feed[rmdl.xin][:,:,wc_radx] = feed[rmdl.xin][:,:,wc_radx] +  (wig*wc_radCon)
+      feed[rmdl.xin][:,:,wc_start] = feed[rmdl.xin][:,:,wc_start] + (wig*wc_radCon)
 
     def wiggle_prep(factr):
       feed[rmdl.xin][:,:,7] = feed[rmdl.xin][:,:,7] * factr
@@ -248,10 +250,12 @@ def tm_xyz(xch,ych,tm, zch=None):
     return tm[:,xix], tm[:,yix], tm[:,zix]
   else:
     return tm[:,xix], tm[:,yix]
-                                
+
+  
+exx, wye =tm_xyz('meta_dTdP', 'meta_dTdP', test_map)
 print('test map dataset shape, max and min sensitivty, count negative')
-print(test_map.shape, test_map[:,34].max(), test_map[:,34].min(), (test_map[:,34] < 0.0).sum())
-sen_histo = np.histogram(test_map[:,34], bins=20)
+print(test_map.shape, exx.max(), exx.min(), (exx < 0.0).sum())
+sen_histo = np.histogram(exx, bins=20)
 print('histo')
 print(zip(sen_histo[0], sen_histo[1][0:-1]))
 
