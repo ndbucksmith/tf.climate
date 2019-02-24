@@ -29,7 +29,7 @@ wc_radCon = 86.4 # kJm-2/day > watts m-2
 target = 'wc_v2test'
 file_ct = len(os.listdir(target))
 if southPoleTest: file_ct = 1;
-mdl_path = 'mdls/nn3031cs60walb'
+mdl_path = 'mdls/nn4041cs61squexc_xlatlon'
 if True:
   with open(mdl_path +'/params.json', 'r') as fi:
     params = json.load(fi)
@@ -50,13 +50,20 @@ for ix in params['rnn_take']:
 print(pstr)
 params['ch_labels'] = imap_lbls
 
+def try_indx(ar, itm):
+  # for more adaptive dTdx testing
+  try:
+    valx = ar.index(itm)
+  except:
+    valx = None
+  return valx  
+
 wc_start = len(params['take'])
-gs_radx = take.index(2)  #index used for wiggle jiggle sensitivity
-wc_radx = take.index(8)
+gs_radx = try_indx(take, 2)  #index used for wiggle jiggle sensitivity
+wc_radx = try_indx(take, 8)
 alb_ix =  wc_start-1
-prec_x = take.index(7)
-assert wcb.nn_features[take[gs_radx]]  == 'gsra'
-assert wcb.nn_features[take[wc_radx]]  == 'sra_'
+prec_x = try_indx(take, 7)
+
 assert wcb.nn_features[take[alb_ix]]  == 'alb'
 
 
@@ -96,7 +103,7 @@ rmdl = gtm.climaRNN(1, sess, params, bTrain=False)
 init_op = tf.global_variables_initializer()
 sess.run(init_op)
 #tf.reset_default_graph()
-rmdl.restore(mdl_path + '/climarnn_1657.ckpt')
+rmdl.restore(mdl_path + '/climarnn_' + str(params['train_file_ct']) + '.ckpt')
 tvars = tf.trainable_variables()
 tvars_vals = sess.run(tvars)
 
@@ -164,9 +171,9 @@ for mcx in range(1):
 #______________build influencer map
     influence_sort = np.argsort(do_dins, axis=2)
     influence_map(influence_sort, do_dins)
-  
-    surfPower_grad = (dodis[:,:,gs_radx].sum(axis=1) + (75.0 * dodis[:,:,wc_start].sum(axis=1))  \
-                       + (75.0 *  dodis[:,:,wc_radx].sum(axis=1)))
+ 
+    surfPower_grad = (wc_radCon *  dodis[:,:,wc_start].sum(axis=1))  # (dodis[:,:,gs_radx].sum(axis=1) + (75.0 * dodis[:,:,wc_start].sum(axis=1))  \
+     #                  + (75.0 *  dodis[:,:,wc_radx].sum(axis=1)))
    
   
  #   f90, ax0 = plotter([dodis[0,:,gs_radx],dodis[0,:,wc_radx],dodis[0,:,wc_start]], name='sensi' + str(tx),  \
@@ -186,9 +193,11 @@ for mcx in range(1):
 
     #add some wiggle and check the jiggle.
     def wiggle_power(wig):
-      # add to global solar srad as watts and wc 12 month and monthly in their wacky units
-      feed[rmdl.xin][:,:,gs_radx] = feed[rmdl.xin][:,:,gs_radx] + wig
-      feed[rmdl.xin][:,:,wc_radx] = feed[rmdl.xin][:,:,wc_radx] +  (wig*wc_radCon)
+      # add to global solar srad as watts and wc 12 month and monthly in their wacky units   
+      if gs_radx != None:
+        feed[rmdl.xin][:,:,gs_radx] = feed[rmdl.xin][:,:,gs_radx] + wig
+      if wc_radx != None:
+       feed[rmdl.xin][:,:,wc_radx] = feed[rmdl.xin][:,:,wc_radx] +  (wig*wc_radCon)
       feed[rmdl.xin][:,:,wc_start] = feed[rmdl.xin][:,:,wc_start] + (wig*wc_radCon)
 
     def wiggle_prep(factr):
@@ -200,7 +209,7 @@ for mcx in range(1):
     
     # fetch temperature estimates with extra power added in from tf session run
     d_sq_errs, d_ests, d_yt, dmeta_h, dmeta_err, d_meta_yt,d_dodis, d_dodins = sess.run(fetch, feed)
-    # calculate sensitivity tosurface  solar power
+    # calculate sensitivity to surface  solar power
     dTdP = (d_ests - ests)/watts  # in unit degreeC per watt per meter square
     meta_dTdP = (dmeta_h - meta_ests)/watts
      #correct for albedo
@@ -235,7 +244,7 @@ for mcx in range(1):
       f1sens.text(0.2, 0.8, 'units are degree C/wm2', transform=plt.gcf().transFigure)
       plt.show()
 
-pst()
+
 test_map = np.array(test_map)
 tm_ch_list = wcb.nn_features  +['err1','err3','err3','err4','err5','err6','err7','err8','err8','err10','err11','err12','oa_err', \
                                 'dTdP1','dTdP2','dTdP3','dTdP4','dTdP5','dTdP6','dTdP7','dTdP8','dTdP9','dTdP10','dTdP11','dTdP12',  \

@@ -85,8 +85,7 @@ class climaRNN():
     y_size = 1
     self.params = params
     self.sess = sess
-  #  self.cell_fw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size, name='fwd_cell') 
- #   self.cell_bw =  tf.contrib.rnn.GRUBlockCellV2(num_units=self.cell_size, name='bwd_cell')
+
     self.fw_init =  tf.get_variable('fwd_init', None, tf.float32, tf.zeros(cell_size))
     self.bw_init =  tf.get_variable('bwd_init', None, tf.float32, tf.zeros(cell_size))
     rnn_init_fwd = []; rnn_init_bwd = [];
@@ -101,10 +100,25 @@ class climaRNN():
     self.xin = tf.placeholder(tf.float32, (None, 12*_years,  xin_size), name='rnn_xin')
     self.norms =  tf.placeholder(tf.float32, (xin_size), name='rnx_norms')
     self.xnorms = tf.divide(self.xin, self.norms)
+    self.pool = tf.reduce_mean(self.xnorms, axis=1)
+#__________add squeeze excite    
+    if self.params['sqex']:    
+      
+      #sq_w1, sq_b1 =  weightSet('sq_l1', [xin_size])
+      sq_w1 = tf.get_variable('sq_wt', shape=xin_size, dtype=tf.float32, )
+      self.squeeze = tf.nn.relu(tf.multiply(self.pool, sq_w1), name='sq_rel')
+      ex_w1 = tf.get_variable('ex_wt', shape=xin_size, dtype=tf.float32, )
+      ex_multiply = tf.multiply(self.squeeze, ex_w1, name='ex_mul')
+      self.excite = tf.reshape(tf.nn.sigmoid(ex_multiply, name='ex_sig'), [-1,1,xin_size])
+      self.xns_sqex = tf.multiply(self.xnorms, self.excite, name='apply_exc') 
+   
+    else:
+      self.xns_sqex = tf.divide(self.xin, self.norms)
+  
     rnn_w1, rnn_b1 = weightSet('rnn_l1', [xin_size, params['pref_width']])
     rnn_l1 = []
     for mx in range(12):
-      rnn_l1.append(tf.nn.tanh(tf.add(tf.matmul(self.xnorms[:,mx], rnn_w1), rnn_b1)))
+      rnn_l1.append(tf.nn.tanh(tf.add(tf.matmul(self.xns_sqex[:,mx], rnn_w1), rnn_b1)))
     self.rnn_l1 = tf.transpose(tf.stack(rnn_l1), perm=[1,0,2])
     (fwouts, bwouts),(fwstate, bwstate) = tf.nn.bidirectional_dynamic_rnn( \
                   self.cell_fw,
@@ -114,7 +128,7 @@ class climaRNN():
                   initial_state_bw=rnn_init_bwd,                                                     
                   dtype=tf.float32)
     #default is both states (fw and bw) init to zeros
- 
+
     rnn_wy = tf.get_variable('rnn_wy', None, tf.float32, tf.random_normal(
                                [(cell_size*2) + xin_size, y_size],\
                                stddev=0.01))
@@ -134,6 +148,7 @@ class climaRNN():
     self.y_trues = y_trues
     loss = tf.add_n(losses); self.loss = loss;
     losser = tf.add_n(lossers); self.losser = losser;
+    
     if bTrain:
       global_step = tf.Variable(0, trainable=False)
       start_learnrate = params['learn_rate']                          
@@ -145,8 +160,7 @@ class climaRNN():
     else:
       self.ts = None;
     if metaTrain:
-      meta_in = tf.concat((tf.transpose(tf.stack(h_norms))[0], self.xnorms[:,ix,0:self.xin_size]), axis=1)
-     # pst()
+      meta_in = tf.concat((tf.transpose(tf.stack(h_norms))[0], self.pool), axis=1)
       meta_w1, meta_b1 = weightSet('meta_l1', [12+self.xin_size, params['metaf_width']])
       meta_o1 = tf.nn.tanh(tf.add(tf.matmul(meta_in, meta_w1), meta_b1))
       meta_w2, meta_b2 = weightSet('meta_l2', [params['metaf_width'], 1])
@@ -162,13 +176,10 @@ class climaRNN():
       meta_optim = tf.train.AdamOptimizer(meta_learn)
       self.meta_ts  = meta_optim.minimize(self.meta_loss, var_list=[meta_w1, meta_b1, meta_w2, meta_b2], \
                                           global_step=meta_globstep)
-
-                       
-    #pdb.set_trace()
     self.vars_to_save=(v.name for v in tf.trainable_variables())
     self.vl = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
     self.sv1 = tf.train.Saver()
- 
+  
   
   def bld_multiyearfeed(self, yrs, ins, rins, rn_trus, me_trus):
     fd ={}
@@ -195,7 +206,7 @@ class climaRNN():
     fd[self.xin] = full_rinset
     fd[self.norms] = full_normset
     fd[self.meta_yt] = np.reshape(np.array(me_trus), (-1,1))
-    #pdb.set_trace()
+  
     return fd
 
   def save(self, path, tx):

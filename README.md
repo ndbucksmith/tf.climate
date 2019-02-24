@@ -41,7 +41,7 @@ There are four models, first one now deleted
 
 ### metrics, data, and models
 
-All models are wrong, some models are useful. For the purpose of determining climate sensitivity a validated model with less than 2.0 degrees C of mean squared error (MSE) is sure to be useful. The meta NN architecture is now at 1 degree C or better.
+The meta NN architecture is now at 1 degree C or better.
 
 ![map of 13200 test points](test_data/mse_lt_1c.png)
 
@@ -89,4 +89,4 @@ http://worldclim.org/version2
 
 Fick, S.E. and R.J. Hijmans, 2017. Worldclim 2: New 1-km spatial resolution climate surfaces for global land areas. International Journal of Climatology.
 
-
+https://rmets.onlinelibrary.wiley.com/doi/10.1002/joc.5086
