@@ -85,7 +85,7 @@ class climaRNN():
     y_size = 1
     self.params = params
     self.sess = sess
-
+    in_sd = params['init_stddev']
     self.fw_init =  tf.get_variable('fwd_init', None, tf.float32, tf.zeros(cell_size))
     self.bw_init =  tf.get_variable('bwd_init', None, tf.float32, tf.zeros(cell_size))
     rnn_init_fwd = []; rnn_init_bwd = [];
@@ -103,23 +103,23 @@ class climaRNN():
     self.pool = tf.reduce_mean(self.xnorms, axis=1)
 #__________add squeeze excite    
     if self.params['sqex']:    
-      
-      #sq_w1, sq_b1 =  weightSet('sq_l1', [xin_size])
       sq_w1 = tf.get_variable('sq_wt', shape=xin_size, dtype=tf.float32, )
       self.squeeze = tf.nn.relu(tf.multiply(self.pool, sq_w1), name='sq_rel')
       ex_w1 = tf.get_variable('ex_wt', shape=xin_size, dtype=tf.float32, )
       ex_multiply = tf.multiply(self.squeeze, ex_w1, name='ex_mul')
       self.excite = tf.reshape(tf.nn.sigmoid(ex_multiply, name='ex_sig'), [-1,1,xin_size])
-      self.xns_sqex = tf.multiply(self.xnorms, self.excite, name='apply_exc') 
-   
+      self.xns_sqex = tf.multiply(self.xnorms, self.excite, name='apply_exc')    
     else:
       self.xns_sqex = tf.divide(self.xin, self.norms)
   
-    rnn_w1, rnn_b1 = weightSet('rnn_l1', [xin_size, params['pref_width']])
-    rnn_l1 = []
+    rnn_w1, rnn_b1 = weightSet('rnn_l1', [xin_size, params['pref_width']], in_sd)
+  #  rnn_w2, rnn_b2 = weightSet('rnn_l2', [params['pref_width'], params['pref_width']], in_sd)
+    rnn_l1 = []; rnn_l2 = [];
     for mx in range(12):
       rnn_l1.append(tf.nn.tanh(tf.add(tf.matmul(self.xns_sqex[:,mx], rnn_w1), rnn_b1)))
+     # rnn_l2.append(tf.nn.tanh(tf.add(tf.matmul(rnn_l1[mx], rnn_w2), rnn_b2)))
     self.rnn_l1 = tf.transpose(tf.stack(rnn_l1), perm=[1,0,2])
+#    self.rnn_l2 = tf.transpose(tf.stack(rnn_l2), perm=[1,0,2])
     (fwouts, bwouts),(fwstate, bwstate) = tf.nn.bidirectional_dynamic_rnn( \
                   self.cell_fw,
                   self.cell_bw,
@@ -128,19 +128,20 @@ class climaRNN():
                   initial_state_bw=rnn_init_bwd,                                                     
                   dtype=tf.float32)
     #default is both states (fw and bw) init to zeros
-
+    rnno_w1, rnno_b1 = weightSet('rnno_l1',[(cell_size*2) + xin_size,(cell_size*2) + xin_size], in_sd)
     rnn_wy = tf.get_variable('rnn_wy', None, tf.float32, tf.random_normal(
                                [(cell_size*2) + xin_size, y_size],\
                                stddev=0.01))
     rnn_by = tf.get_variable('rnn_by', None, tf.float32, tf.zeros(y_size))
-    hypos = []; losses = []; y_trues = []; lossers = []; h_norms = []
+    hypos = []; losses = []; y_trues = []; lossers = []; h_norms = []; rnno_l1 = []; rnno_mm = [];
     self.temp_norms = tf.constant(40.0, dtype=tf.float32, shape=[1])
     outs = tf.concat((fwouts, bwouts), axis=2)
+   
     for ix in range(12*_years):
       y_trues.append(tf.placeholder(tf.float32, (None,  y_size), name='rnn_yt'+str(ix)))
-      hypos.append(tf.add(rnn_by, tf.matmul(  \
-                          tf.concat((outs[:,ix,:], self.xnorms[:,ix,:]), axis=1), \
-                          rnn_wy), name='h_'+str(ix)))
+      rnno_mm.append( tf.matmul(tf.concat((outs[:,ix,:], self.xnorms[:,ix,:]), axis=1), rnno_w1))
+      rnno_l1.append(tf.nn.tanh(tf.add(rnno_mm[ix], rnno_b1)))  
+      hypos.append(tf.add(rnn_by, tf.matmul(rnno_l1[ix], rnn_wy), name='rnnh_'+str(ix)))
       h_norms.append(tf.divide(hypos[ix], self.temp_norms))
       losses.append(tf.square(y_trues[ix] - hypos[ix], name='losses'))
       lossers.append(tf.reduce_mean(losses[ix], name='lossers'))
@@ -161,10 +162,15 @@ class climaRNN():
       self.ts = None;
     if metaTrain:
       meta_in = tf.concat((tf.transpose(tf.stack(h_norms))[0], self.pool), axis=1)
-      meta_w1, meta_b1 = weightSet('meta_l1', [12+self.xin_size, params['metaf_width']])
+      meta_w1, meta_b1 = weightSet('meta_l1', [12+self.xin_size, params['metaf_width']],in_sd)
       meta_o1 = tf.nn.tanh(tf.add(tf.matmul(meta_in, meta_w1), meta_b1))
-      meta_w2, meta_b2 = weightSet('meta_l2', [params['metaf_width'], 1])
-      self.meta_h  = tf.add(meta_b2,  tf.matmul(meta_o1, meta_w2))
+  #    meta_w2, meta_b2 = weightSet('meta_l2', [params['metaf_width'], params['metaf_width']],in_sd)
+ #     meta_o2 = tf.nn.tanh(tf.add(tf.matmul(meta_o1, meta_w2), meta_b2))
+#      meta_w3, meta_b3 = weightSet('meta_l3', [params['metaf_width'], params['metaf_width']], in_sd)
+#      meta_o3 = tf.nn.tanh(tf.add(tf.matmul(meta_o2, meta_w3), meta_b3))
+      
+      meta_wout, meta_bout = weightSet('meta_lout', [params['metaf_width'], 1], in_sd)      
+      self.meta_h  = tf.add(meta_bout, tf.matmul(meta_o1, meta_wout))
       self.meta_yt = tf.placeholder(tf.float32, (None,  y_size), name='meta_yt')
       self.meta_loss = tf.square(self.meta_h-self.meta_yt, name='meta_loss')
       self.meta_losser = tf.reduce_mean(self.meta_loss, name='meta_losser')
@@ -174,7 +180,9 @@ class climaRNN():
       meta_globstep = tf.Variable(0, trainable=False)
       meta_learn =  tf.train.exponential_decay(start_learnrate, meta_globstep, 300000, 0.9, staircase=True)
       meta_optim = tf.train.AdamOptimizer(meta_learn)
-      self.meta_ts  = meta_optim.minimize(self.meta_loss, var_list=[meta_w1, meta_b1, meta_w2, meta_b2], \
+    
+      self.meta_var_list = tf.trainable_variables()[len(self.rnn_varlist):]
+      self.meta_ts  = meta_optim.minimize(self.meta_loss, var_list=self.meta_var_list, \
                                           global_step=meta_globstep)
     self.vars_to_save=(v.name for v in tf.trainable_variables())
     self.vl = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
@@ -213,9 +221,6 @@ class climaRNN():
     #pdb.set_trace()
     tvar = tf.trainable_variables()
     tvar_vals = self.sess.run(tvar)
-    for var, val in zip(tvar, tvar_vals):
-      print(var.name, var.shape)
-    print(val)
     ses = self.sess
     save_path = self.sv1.save(ses, path+str(tx)+'.ckpt', )
 
@@ -232,8 +237,8 @@ class climaRNN():
     
  
 
-def weightSet(name, shape):
-  wt = tf.get_variable(name+'_wt', None, tf.float32, tf.random_normal(shape, stddev=0.01))
+def weightSet(name, shape, in_sd):
+  wt = tf.get_variable(name+'_wt', None, tf.float32, tf.random_normal(shape, stddev=in_sd))
   bi = tf.get_variable(name+'_bias', None, tf.float32, tf.zeros(shape[-1]))
   return wt, bi
 
