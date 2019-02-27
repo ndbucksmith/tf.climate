@@ -30,10 +30,10 @@ params['batch_size'] = 400
 b_size = params['batch_size']
 params['pref_width'] = 30
 params['metaf_width'] = 31
-params['mdl_path'] = 'mdls/nn3031cs64_latlon_meta_pool'
+params['mdl_path'] = 'mdls/sqex_111layio_latlon_multirun'
 params['learn_rate'] = 0.05
-params['init_stddev'] = 0.05
-params['take'] = [0,1,3,4,5,6,9,10,11,12,13,14,15, 20]
+params['init_stddev'] = 0.5
+params['take'] = [0,1,4,5,6,9,10,11,12,13,14,15,20]
 params['rnn_take'] = [0,1,2,3]
 take = params['take']
 params['yrly_size'] = len(params['take'])  #number of static once per year chanels
@@ -45,21 +45,31 @@ for idx in range(len(params['take'])):
   pstr += ', '
 print(pstr)
 target = 'wc_v2' # directory where batch files are
-file_ct = len(os.listdir(target))
-params['train_file_ct'] = file_ct
+
 sess = tf.Session()
 #pst()
 rmdl = gtm.climaRNN(1, sess, params)
 init_op = tf.global_variables_initializer()
 sess.run(init_op)
 
+
+
+
+
+
+
+
   # loop for trying large number of model reinits
   # or for multiple runs thru set of training batches
-train_history = []
-for mcx in range(3):  
-  for tx_ in range(file_ct):
+save_good_model = False; multitrain_history = []
+for mcx in range(20):
+  train_history = []
+  sess.run(init_op)
+  file_ct = len(os.listdir(target))
+  params['train_file_ct'] = file_ct
+  for tx_ in range(3*file_ct):
     start_t = time.time()
-    if mcx == 0:
+    if tx_ < file_ct:
       tx = tx_
     else:
       tx = np.random.randint(0, file_ct)
@@ -82,35 +92,51 @@ for mcx in range(3):
     errs, ests, step, yt, mts, met_err   = sess.run(fetch, feed)
     errs =np.array(errs)
     train_history.append( [errs.mean(), errs.max(), errs.min(), met_err] )
-    if tx % 100 == 99:
-      pass #pdb.set_trace()
-    gtu.arprint([tx, errs.mean(), errs.max(), errs.min(), met_err])
-
-  if errs.mean() < 1.0:
-    print('whoop') #pass # pdb.set_trace()
-
-rmdl.save(params['mdl_path'] +'/climarnn_', file_ct)
-tvars = tf.trainable_variables()
-tvars_vals = sess.run(tvars)
-with open(params['mdl_path'] + '/params.json', 'w') as fo:
-  json.dump(params, fo)          
-
-if True:
-  for var, val in zip(tvars, tvars_vals):
-    print(var.name,var.shape)
-
-train_history = np.array(train_history)
-last500 = train_history[-500:,3]
-print('last 500 min mean max')
-gtu.arprint([last500.min(), last500.mean(), last500.max()])
-sum_msg = 'last 500 min mean max:' + str(round(last500.min(),3)) + '    ' + str(round(last500.mean(),3)) + '    ' + str(round(last500.max(),3))
+    if tx_ % 500 == 0 or tx_ == ((3*file_ct)-1):
+      if tx_ ==0: 
+        gtu.arprint([mcx, tx_, tx, errs.mean(), errs.max(), errs.min(), met_err])
+      else:
+        last500 = np.array(train_history)[-500:,:]
+        gtu.arprint([mcx, tx_, 'rnn:', last500[:,0].min(), last500[:,0].mean(), last500[:,0].max()])
+        gtu.arprint([mcx, tx_, 'meta:', last500[:,3].min(), last500[:,3].mean(), last500[:,3].max()])
+        if last500[:,3].mean() < 0.46  or  last500[:,3].max() < 0.8:
+          print('saving a v good meta  model')
+          save_good_model = True
+          break
+        if  last500[:,0].max() < 1.2:
+          print('saving a v good rnn  model')
+          save_good_model = True
+          break        
 
 
+  
+  multitrain_history.append(train_history)
+  if save_good_model: break;
 
+if save_good_model:
+  rmdl.save(params['mdl_path'] +'/climarnn_', file_ct)
+  with open(params['mdl_path'] + '/params.json', 'w') as fo:
+    json.dump(params, fo)          
+  with open(params['mdl_path'] + '/train_hist.json', 'w') as fo:
+    json.dump(train_history, fo)
+  with open(params['mdl_path'] + '/multitrain_history.json', 'w') as fo:
+    json.dump(multitrain_history, fo)
+        
+"""
+work around due to  issues with x11 fwd and tmux.  graphing in another .py file
+
+
+multitrain_history = np.array(multitrain_history)
+
+sum_msg = 'last 500 meta min mean max:' + str(round(last500[:,3].min(),3)) + '    ' + str(round(last500[:,3].mean(),3)) +  \
+          '    ' + str(round(last500[:,3].max(),3))
+sum_msg2 = 'last 500 rnn min mean max:' + str(round(last500[:,0].min(),3)) + '    ' + str(round(last500[:,0].mean(),3)) + \
+           '    ' + str(round(last500[:,0].max(),3))
 fig, axe  = plt.subplots(1)
 fig.suptitle('error vs.iteration')
 fig.text(0.15, 0.75,sum_msg, transform=plt.gcf().transFigure)
-fig.text(0.15, 0.7,params['mdl_path'], transform=plt.gcf().transFigure)
+fig.text(0.15, 0.7,sum_msg2, transform=plt.gcf().transFigure)
+fig.text(0.15, 0.6,params['mdl_path'], transform=plt.gcf().transFigure)
 fig.text(0.15, 0.65,str(file_ct) + ' batches', transform=plt.gcf().transFigure)
 fig.subplots_adjust(top=0.95, bottom=0.05, left=0.1, right=0.99)
 axe.scatter(range(len(train_history)),train_history[:,0], c='k', s=1)
@@ -120,3 +146,4 @@ pointsixer = [0.5]* len(train_history)
 axe.plot(oner)
 axe.plot(pointsixer)
 plt.show()
+"""
