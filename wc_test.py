@@ -29,7 +29,7 @@ wc_radCon = 86.4 # kJm-2/day > watts m-2
 target = 'wc_v2test'
 file_ct = len(os.listdir(target))
 if southPoleTest: file_ct = 1;
-mdl_path = 'mdls/nn4041cs61squexc_xlatlon'
+mdl_path = 'mdls/sqex_111layio_latlon_multirun'
 if True:
   with open(mdl_path +'/params.json', 'r') as fi:
     params = json.load(fi)
@@ -58,10 +58,10 @@ def try_indx(ar, itm):
     valx = None
   return valx  
 
-wc_start = len(params['take'])
+wc_start = len(params['take']) 
 gs_radx = try_indx(take, 2)  #index used for wiggle jiggle sensitivity
 wc_radx = try_indx(take, 8)
-alb_ix =  wc_start-1
+alb_ix =  len(params['take']) -1
 prec_x = try_indx(take, 7)
 
 assert wcb.nn_features[take[alb_ix]]  == 'alb'
@@ -192,19 +192,20 @@ for mcx in range(1):
     print('location plus top 5 features for worst errors')
 
     #add some wiggle and check the jiggle.
+    # force the do and check the view h.t. Judea Pearl 
     def wiggle_power(wig):
-      # add to global solar srad as watts and wc 12 month and monthly in their wacky units   
+      # add to global solar srad as watts and wc 12 month and monthly in their  units
       if gs_radx != None:
         feed[rmdl.xin][:,:,gs_radx] = feed[rmdl.xin][:,:,gs_radx] + wig
-      if wc_radx != None:
-       feed[rmdl.xin][:,:,wc_radx] = feed[rmdl.xin][:,:,wc_radx] +  (wig*wc_radCon)
-      feed[rmdl.xin][:,:,wc_start] = feed[rmdl.xin][:,:,wc_start] + (wig*wc_radCon)
+      if True:   #wc_radx != None:
+       #feed[rmdl.xin][:,:,wc_radx] = feed[rmdl.xin][:,:,wc_radx] +  (wig*wc_radCon)
+       feed[rmdl.xin][:,:,wc_start+2] = feed[rmdl.xin][:,:,wc_start+2] + (wig)
 
     def wiggle_prep(factr):
       feed[rmdl.xin][:,:,7] = feed[rmdl.xin][:,:,7] * factr
       feed[rmdl.xin][:,:,wc_start+1] = feed[rmdl.xin][:,:,wc_start+1] * factr
       
-    watts=3.7
+    watts=0.1
     wiggle_power(wig=watts)
     
     # fetch temperature estimates with extra power added in from tf session run
@@ -213,9 +214,10 @@ for mcx in range(1):
     dTdP = (d_ests - ests)/watts  # in unit degreeC per watt per meter square
     meta_dTdP = (dmeta_h - meta_ests)/watts
      #correct for albedo
-    meta_dTdP = meta_dTdP /  (1-np.reshape(feed[rmdl.xin][:,0,alb_ix], (400,1)))
+    meta_dTdP = meta_dTdP   # /  (1-np.reshape(feed[rmdl.xin][:,0,alb_ix], (400,1)))
          
     print('power sensitivity - mean, max, min, stdev, count negative')
+ 
     gtu.arprint([dTdP.mean(), dTdP.max(), dTdP.min(), dTdP.std(), (dTdP < 0.0).sum()])
     gtu.arprint([meta_dTdP.mean(), meta_dTdP.max(), meta_dTdP.min(), meta_dTdP.std(), (meta_dTdP < 0.0).sum()])
     gtu.arprint([surfPower_grad.mean(),surfPower_grad.max(),surfPower_grad.min(),surfPower_grad.std(),(surfPower_grad < 0.0).sum()])
@@ -263,10 +265,11 @@ def tm_xyz(xch,ych,tm, zch=None):
   
 exx, wye =tm_xyz('meta_dTdP', 'meta_dTdP', test_map)
 print('test map dataset shape, max and min sensitivty, count negative')
-print(test_map.shape, exx.max(), exx.min(), (exx < 0.0).sum())
+print(test_map.shape, exx.max(), exx.min(),exx.mean(), exx.std(), (exx < 0.0).sum())
 sen_histo = np.histogram(exx, bins=20)
 print('histo')
 print(zip(sen_histo[0], sen_histo[1][0:-1]))
+# ((13600, 53), 0.46982133388519287, -0.32782065868377686, 0.05675570301011392, 0.04886612636402143, 835)
 
 
 print('influence count  dT/dfeat ')
@@ -303,7 +306,7 @@ axe21.xaxis.set_label_text('degree C / watt per meter square')
 fig21 = addnote(fig21, params)
 
 
-sen_normalize = matplotlib.colors.Normalize(vmin=-0.3, vmax=0.3)
+sen_normalize = matplotlib.colors.Normalize(vmin=-0.5, vmax=0.5)
 err_normalize = matplotlib.colors.Normalize(vmin=-3.0, vmax=3.0)
 
 
@@ -348,9 +351,10 @@ if False:
 
   f9, a9 = scat(test_map[:,4], test_map[:,36], test_map[:,36], 'RdBu', \
               'error v elevation', err_normalize)
+  
+exx, wye =  tm_xyz('meta_dTdP','meta_yt', test_map,)
+ffreeze, axfreeze = scat(exx, wye, exx, 'RdBu', 'sensitivity v Trutemp', sen_normalize)
 
-ffreeze, axfreeze = scat(test_map[:,38], test_map[:,37], test_map[:,34], 'RdBu', \
-              'sensitivity v Trutemp', sen_normalize)
 exx, wye =  tm_xyz('meta_est','meta_yt', test_map,)
 fyt, axtt = scat(exx, wye, 'k', None, 'model est v Trutemp', None)
 
