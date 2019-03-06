@@ -27,6 +27,10 @@ dem3  version3 elevation int16 nodat: None
 Version 2 batcher corrects errors in prec scaling and bad data filters 
 and adds annual wind value to nn_features
 
+Version 3 batcher corrects errors in err logs, and index into random examples 
+and adds desert as a land type and slopes of the example land  to nn_feature
+Also add vapr pressure to rnn features
+
 copyright 2019 Nelson 'Buck' Smith
 
 Annual feature  names entered in three rows 
