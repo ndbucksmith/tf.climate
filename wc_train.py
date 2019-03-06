@@ -30,21 +30,22 @@ params['batch_size'] = 400
 b_size = params['batch_size']
 params['pref_width'] = 30
 params['metaf_width'] = 31
-params['mdl_path'] = 'mdls/sqex_111layio_latlon_multirun'
+params['mdl_path'] = 'mdls/v3_test'
 params['learn_rate'] = 0.05
 params['init_stddev'] = 0.5
-params['take'] = [0,1,4,5,6,9,10,11,12,13,14,15,20]
+params['take'] = [0,1,2,3,4,5,9,10,11,12,13,14,15,18]
 params['rnn_take'] = [0,1,2,3]
 take = params['take']
 params['yrly_size'] = len(params['take'])  #number of static once per year chanels
 params['cell_size'] =  64
 params['rxin_size'] = len(take) + len(params['rnn_take'])  # mdl uses this as rmdl.xin_size
 pstr = "training with: "
+pst()
 for idx in range(len(params['take'])):
   pstr += wcb.nn_features[take[idx]]
   pstr += ', '
 print(pstr)
-target = 'wc_v2' # directory where batch files are
+target = 'wc_v3' # directory where batch files are
 
 sess = tf.Session()
 #pst()
@@ -53,21 +54,15 @@ init_op = tf.global_variables_initializer()
 sess.run(init_op)
 
 
-
-
-
-
-
-
   # loop for trying large number of model reinits
   # or for multiple runs thru set of training batches
 save_good_model = False; multitrain_history = []
-for mcx in range(20):
+for mcx in range(1):
   train_history = []
   sess.run(init_op)
   file_ct = len(os.listdir(target))
   params['train_file_ct'] = file_ct
-  for tx_ in range(3*file_ct):
+  for tx_ in range(file_ct):
     start_t = time.time()
     if tx_ < file_ct:
       tx = tx_
@@ -83,7 +78,7 @@ for mcx in range(20):
         rsqs =  dc['rnn_seqs']
         wc_trus = dc['ec_tru']  #alternative verion of reality, man
         rn_trus =  dc['rnn_trus']
-        trus = dc['trus']
+        d3_idx = dc['d3_idx']
     #pdb.set_trace()
     feed = rmdl.bld_multiyearfeed(1, ins, rsqs, rn_trus, wc_trus)
 
@@ -91,15 +86,16 @@ for mcx in range(20):
  
     errs, ests, step, yt, mts, met_err   = sess.run(fetch, feed)
     errs =np.array(errs)
+    gtu.arprint([mcx, tx_, tx, errs.mean(), errs.max(), errs.min(), met_err])
     train_history.append( [errs.mean(), errs.max(), errs.min(), met_err] )
-    if tx_ % 500 == 0 or tx_ == ((3*file_ct)-1):
+    if False: #tx_ % 500 == 0 or tx_ == ((3*file_ct)-1):
       if tx_ ==0: 
         gtu.arprint([mcx, tx_, tx, errs.mean(), errs.max(), errs.min(), met_err])
       else:
         last500 = np.array(train_history)[-500:,:]
         gtu.arprint([mcx, tx_, 'rnn:', last500[:,0].min(), last500[:,0].mean(), last500[:,0].max()])
         gtu.arprint([mcx, tx_, 'meta:', last500[:,3].min(), last500[:,3].mean(), last500[:,3].max()])
-        if last500[:,3].mean() < 0.46  or  last500[:,3].max() < 0.8:
+        if last500[:,3].mean() < 0.475  or  last500[:,3].max() < 0.8:
           print('saving a v good meta  model')
           save_good_model = True
           break
