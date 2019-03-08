@@ -25,7 +25,7 @@ copyright 2019 Nelson 'Buck' Smith
 """
 
 params = {}
-params['sqex'] = False
+params['sqex'] = True
 params['batch_size'] = 400
 b_size = params['batch_size']
 params['pref_width'] = 30
@@ -40,7 +40,7 @@ params['yrly_size'] = len(params['take'])  #number of static once per year chane
 params['cell_size'] =  64
 params['rxin_size'] = len(take) + len(params['rnn_take'])  # mdl uses this as rmdl.xin_size
 pstr = "training with: "
-pst()
+
 for idx in range(len(params['take'])):
   pstr += wcb.nn_features[take[idx]]
   pstr += ', '
@@ -88,11 +88,11 @@ for mcx in range(1):
     errs =np.array(errs)
     gtu.arprint([mcx, tx_, tx, errs.mean(), errs.max(), errs.min(), met_err])
     train_history.append( [errs.mean(), errs.max(), errs.min(), met_err] )
-    if False: #tx_ % 500 == 0 or tx_ == ((3*file_ct)-1):
+    if tx_ == (file_ct-1):
       if tx_ ==0: 
         gtu.arprint([mcx, tx_, tx, errs.mean(), errs.max(), errs.min(), met_err])
       else:
-        last500 = np.array(train_history)[-500:,:]
+        last500 = np.array(train_history)[-30:,:]
         gtu.arprint([mcx, tx_, 'rnn:', last500[:,0].min(), last500[:,0].mean(), last500[:,0].max()])
         gtu.arprint([mcx, tx_, 'meta:', last500[:,3].min(), last500[:,3].mean(), last500[:,3].max()])
         if last500[:,3].mean() < 0.475  or  last500[:,3].max() < 0.8:

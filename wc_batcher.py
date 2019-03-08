@@ -57,21 +57,31 @@ sslp - north south slope of tile with sun facing positive, pole facing negative
 eslp - eastern slope of tile
 zs, gtzs, ltzs - fraction of land at sea level and below and above
 
+Monthly features are
+suraface visble rad in kJm-2/day
+precipitation in mm
+toa visble flux in watts / m-2
+wind  = km/hr?
+vapor rpessure in psi?  
+
+
+
 """
 
+wc_radCon = 86.4 # kJm-2/day > watts m-2
 nn_features = ['lon', 'lat', 'toa_', 'elev', 'barp', 's/t', 'pre_', 'sra_', 'win_',\
                'land', 'wat', 'ice', 'dsrt', 'alb', \
                'sh', 'nh', 'rast', 'elst', 'sun','cori', 'zs', 'gtzs', 'ltzs',  \
                 ] 
 nn_feat_len = len(nn_features)
-nn_norms = [180.0, 90.0,  415.0, 7000.0, 760.0, 1.0, 600.0, 25000.0, 11.0, \
+nn_norms = [180.0, 90.0,  415.0, 7000.0, 760.0, wc_radCon, 600.0, 25000.0, 11.0, \
               1.0, 1.0,  1.0,1.0, 1.0,  \
               1.0, 1.0, 2000.0, 4000.0, 150.0, 150.0, 400.0, 400.0, 400.0,]
 assert len(nn_norms) == nn_feat_len
 rnn_features =['srad','prec','toa','wind', 'vap']
-rnn_norms = [32768.0, 2400.0, 500.0, 11.0, 200.0]
+rnn_norms = [32768.0, 2400.0, 500.0, 11.0, 5]
 rnn_feat_len = 4
-wc_radCon = 86.4 # kJm-2/day > watts m-2
+
 #to build wc data file names
 def str2(mx):
   if mx < 9:
@@ -104,6 +114,8 @@ lcds = rio.open('wcdat/lc/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2015-v2.0.7.tif')
 dem3ds = []
 for tilx in range(24):
   dem3ds.append(rio.open('wcdat/dem3/' + gtu.dem3_files[tilx]))
+  #print(dem3ds[tilx].profile['height'],dem3ds[tilx].profile['width'], )
+
 
 # open list of points withj dem3  data 20 klick squares with data
 with open('epoch3/summary_cts.pkl', 'r') as fi:
@@ -127,6 +139,7 @@ test_total = testcts.sum()
 #print(train_sums)
 print('total 20 klick squares for training:' + str(train_total))
 print('total 20 klick squares for test:' + str(test_total))
+
 
 #version 3 use index from dem3, get coresponding windows into
 # g tifs with other coordinate systems
@@ -183,49 +196,9 @@ def lc_histo(lc):
     print(land, water, ice, desert)
     return land, water, ice, desert                     
 
-
-#maturn edinburgh  kuwait, ponca city, sydney, port au france
-# some of these locations have no data for some params,
-#get_batch(0 + build_eu_example() refect windows with no data or bad data
-def data_validation_test():
-  pickpts = [[-63.18, 9.8],[-3.2, 55.5],[47.98, 29.5], [-97.1, 36.7], \
-                [151.2, -33.9], [70.25, -49.35], [0.0, 0.0]]
-  GISStemps = [27.5, 8.5, 28.0, 15.0, 18.0, 5.0, 27]
-  for ix in range(len(pickpts)):
-    lax, lox = elds.index(pickpts[ix][0], pickpts[ix][1])
-    wnd, wcwnd, lcwnd = get_windset(lax, lox, 2)       
-    gloTemp = np.nanmean(teds.read(1, window=wnd))
-    gloSRAD = np.nanmean(hids.read(1, window=wnd)) * 1000.0/24.0
-    lc = lcds.read(1, window=lcwnd)
-    print('temps for ', pickpts[ix])
-
-    srad_months = []; prec_months = []; temp_months = []
-    for mx in range(12):
-      srad_months.append(wd_filteredstats(sradds[mx].read(1, window=wcwnd), 65535))
-      prec_months.append(wd_filteredstats(precds[mx].read(1, window=wcwnd), -32768))
-      temp_months.append(wd_filteredstats(tavgds[mx].read(1, window=wcwnd), -3.4e+38))
-    temp_months = np.array(temp_months)
-    print(GISStemps[ix], gloTemp, temp_months.mean())
-    print('radiations')
-    #pdb.set_trace()
-    srad_months = np.array(srad_months)
-    toa_months = gtu.toa_series( pickpts[ix][1])
-    sr12 = gtu.acc12mo_avg(srad_months)
-    sr_cal = sr12/gloSRAD
-    gtu.arprint([gloSRAD, sr12, sr_cal])
-    gtu.arprint(srad_months/sr_cal)
-    gtu.arprint(toa_months)
-    prec_months = np.array(prec_months)
-    print('precip', prec_months.mean())
-    print(lc)
-    print('lc',  lc_histo(lc)  )                 
-    pdb.set_trace()   
-
-#data_validation_test()
-
 def get_windpt(ptx, cts):
   wx = 0 
-  while cts[wx] < ptx:
+  while cts[wx]-1 < ptx: # was not pciking zero and crashing one past last index
     wx +=1
   if wx == 0:  #this is fix for version 2 bug
     pickpt = ptx
@@ -233,17 +206,22 @@ def get_windpt(ptx, cts):
     pickpt = ptx - cts[wx-1]
   return wx, pickpt
 
-def get_example_index(wx, pickpt, bTrain):
-  
+def get_example_index(wx, pickpt, bTrain):  
   fn = 'epoch3/' + gtu.dem3_files[wx]
   fn= fn[0:-4] + '.pkl'
   print(fn)
   with open(fn, 'r') as fi:
     windict = pickle.load(fi)
-  if bTrain:
-    erow = windict['trix'][pickpt]
-  else:
-    erow = windict['teix'][pickpt] 
+  try:
+    if bTrain:
+      erow = windict['trix'][pickpt]
+    else:
+      erow = windict['teix'][pickpt]
+  except:  #hackish
+    if bTrain:
+      erow = windict['trix'][pickpt-1]
+    else:
+      erow = windict['teix'][pickpt-1]    
   return erow
 
 def elev_slope(el, lati):
@@ -365,35 +343,8 @@ def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
   #print(ex_good)
   ins = [lon, lat, toa_pwr, elev, barop, pwr_ratio, wc_prec, wc_srad, wc_wind, land, water, ice, desert, new_alb, \
          sh1h, nh1h, vis_dstd, elev_std,  sun_slope, ew_slope, zs, gtzs, ltzs, ]  
-  return np.array(ins), ex_good, rnn_seq, temp_12mo, wc_temp, wx #wx is index to one 24 d3 geotif files
-
-
-
- # https://www.timeanddate.com/weather/antarctica/south-pole/climate 
-def southPole():
-  pwr_ratio = 0.8; lat=89.5; lon=10.0;
-  temp_12mo = np.array([-14.0, -37.0, -57.0, -67.0, -66.0, -64.0, -67.0, -66.0, -71.0, -59.0, -33.0, -16.0])
-  wc_temp = gtu.acc12mo_avg(temp_12mo); temp = wc_temp; ex_good = True;
-  toa_12 = np.array(gtu.toa_series(-89.999))
-  toa_pwr = gtu.acc12mo_avg(toa_12)
-  srad12 = toa_12 * pwr_ratio * 75.0
-  prec12 =np.array([0.36, 0.23, 0.17, 0.17, 0.22, 0.21, 0.17, 0.17, 0.14, 0.11, 0.09, 0.23]) * 25.4 #inches > mm
-  wind12 = np.array([11, 12, 13, 13, 13, 15, 14, 13, 13, 12, 11, 10])*0.1   # this is mph?? does nto seem right
-  elev = 5000/3.1
-  elev_std = 50.0
-  vis_dstd = 5.0
-  gtzs = 400; ltzs = 0;  zs =  0; 
-  vis_down = gtu.acc12mo_avg(toa_12) * pwr_ratio
-  wc_srad = vis_down * 75.0
-  wc_prec = gtu.acc12mo_avg(prec12)
-  wc_wind = gtu.acc12mo_avg(wind12)
-  land=0.0; water = 0.0; ice=1.0; sh1h=1.0; nh1h=0.0
-  barop = gtu.bp_byalt(elev)
-  rnn_seq = [srad12, prec12, toa_12, wind12]
-  ins = [lon, lat, vis_down, toa_pwr, elev, barop, pwr_ratio, wc_prec, wc_srad, land, water, ice, \
-         sh1h, nh1h, vis_dstd, elev_std,  zs, gtzs, ltzs, wc_wind]  
-  return np.array(ins), temp, ex_good, rnn_seq, temp_12mo, wc_temp
-    
+  return np.array(ins), ex_good, rnn_seq, temp_12mo, wc_temp, wx
+                  #wx is index to one 24 d3 geotif files
 
 def get_batch(size, bTrain):
   ins_bat = []; d3_idx = []; rnn_seqs=[];
@@ -431,6 +382,31 @@ def sPole_batch(size, bTrain):
 
 
 
+ # https://www.timeanddate.com/weather/antarctica/south-pole/climate 
+def southPole():
+  pwr_ratio = 0.8; lat=89.5; lon=10.0;
+  temp_12mo = np.array([-14.0, -37.0, -57.0, -67.0, -66.0, -64.0, -67.0, -66.0, -71.0, -59.0, -33.0, -16.0])
+  wc_temp = gtu.acc12mo_avg(temp_12mo); temp = wc_temp; ex_good = True;
+  toa_12 = np.array(gtu.toa_series(-89.999))
+  toa_pwr = gtu.acc12mo_avg(toa_12)
+  srad12 = toa_12 * pwr_ratio * 75.0
+  prec12 =np.array([0.36, 0.23, 0.17, 0.17, 0.22, 0.21, 0.17, 0.17, 0.14, 0.11, 0.09, 0.23]) * 25.4 #inches > mm
+  wind12 = np.array([11, 12, 13, 13, 13, 15, 14, 13, 13, 12, 11, 10])*0.1   # this is mph?? does nto seem right
+  elev = 5000/3.1
+  elev_std = 50.0
+  vis_dstd = 5.0
+  gtzs = 400; ltzs = 0;  zs =  0; 
+  vis_down = gtu.acc12mo_avg(toa_12) * pwr_ratio
+  wc_srad = vis_down * 75.0
+  wc_prec = gtu.acc12mo_avg(prec12)
+  wc_wind = gtu.acc12mo_avg(wind12)
+  land=0.0; water = 0.0; ice=1.0; sh1h=1.0; nh1h=0.0
+  barop = gtu.bp_byalt(elev)
+  rnn_seq = [srad12, prec12, toa_12, wind12]
+  ins = [lon, lat, vis_down, toa_pwr, elev, barop, pwr_ratio, wc_prec, wc_srad, land, water, ice, \
+         sh1h, nh1h, vis_dstd, elev_std,  zs, gtzs, ltzs, wc_wind]  
+  return np.array(ins), temp, ex_good, rnn_seq, temp_12mo, wc_temp
+    
 
 #pst()
 #get_batch(400, True)
@@ -438,3 +414,41 @@ def sPole_batch(size, bTrain):
 
 #ins, gt_trues, r_sqs, wctrs, rnn_trus = get_batch(1004, True)
 #pdb.set_trace()
+
+
+#maturn edinburgh  kuwait, ponca city, sydney, port au france
+# some of these locations have no data for some params,
+#get_batch(0 + build_eu_example() refect windows with no data or bad data
+def data_validation_test():
+  pickpts = [[-63.18, 9.8],[-3.2, 55.5],[47.98, 29.5], [-97.1, 36.7], \
+                [151.2, -33.9], [70.25, -49.35], [0.0, 0.0]]
+  GISStemps = [27.5, 8.5, 28.0, 15.0, 18.0, 5.0, 27]
+  for ix in range(len(pickpts)):
+    lax, lox = elds.index(pickpts[ix][0], pickpts[ix][1])
+    wnd, wcwnd, lcwnd = get_windset(lax, lox, 2)       
+    gloTemp = np.nanmean(teds.read(1, window=wnd))
+    gloSRAD = np.nanmean(hids.read(1, window=wnd)) * 1000.0/24.0
+    lc = lcds.read(1, window=lcwnd)
+    print('temps for ', pickpts[ix])
+
+    srad_months = []; prec_months = []; temp_months = []
+    for mx in range(12):
+      srad_months.append(wd_filteredstats(sradds[mx].read(1, window=wcwnd), 65535))
+      prec_months.append(wd_filteredstats(precds[mx].read(1, window=wcwnd), -32768))
+      temp_months.append(wd_filteredstats(tavgds[mx].read(1, window=wcwnd), -3.4e+38))
+    temp_months = np.array(temp_months)
+    print(GISStemps[ix], gloTemp, temp_months.mean())
+    print('radiations')
+    #pdb.set_trace()
+    srad_months = np.array(srad_months)
+    toa_months = gtu.toa_series( pickpts[ix][1])
+    sr12 = gtu.acc12mo_avg(srad_months)
+    sr_cal = sr12/gloSRAD
+    gtu.arprint([gloSRAD, sr12, sr_cal])
+    gtu.arprint(srad_months/sr_cal)
+    gtu.arprint(toa_months)
+    prec_months = np.array(prec_months)
+    print('precip', prec_months.mean())
+    print(lc)
+    print('lc',  lc_histo(lc)  )                 
+    pdb.set_trace()   

@@ -75,9 +75,6 @@ tfc
 --wind  #12 files 30 second resolution
 --dem3 #24 files 15 second resolution elevation
 --lc  #1 files gloabl land cover 10 second resolution
--ELE.tif # 30 second resolution
--GHI.tif  # 30 second resolution
--TEMP.tif  # 30 second resolution
 </pre>
 
 

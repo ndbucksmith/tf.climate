@@ -99,7 +99,7 @@ for mcx in range(1):
       wc_trus_max = wc_trus.max()
       #trus_min = trus.min()
       wc_trus_min = wc_trus.min()    
-      for rnx in range(4):
+      for rnx in range(5):
         rn_maxes.append(rsqs[:,rnx,:].max())
         rn_mins.append(rsqs[:,rnx,:].min())  
       wc_trus_cat = wc_trus    
