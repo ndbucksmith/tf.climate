@@ -29,7 +29,7 @@ params['f_width'] = 12
 
 params['learn_rate'] = 0.05
 params['init_stddev'] = 0.05
-params['take'] = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]
+params['take'] = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]
 take = params['take']
 params['x_size'] = len(params['take'])
 params['cell_size'] =  96
@@ -42,7 +42,7 @@ print(pstr)
 print('and')
 print(wcb.rnn_features)
 
-target = 'wc_v2'
+target = 'wc_v3'
 file_ct = len(os.listdir(target)) 
 #
 
@@ -77,17 +77,17 @@ for mcx in range(1):
     if False:
       ins, trus = wcb.get_batch(params['batch_size'], True)
     else:
-      with open('wc_v2/wcb_' + str(tx) + '.pkl', 'r') as fi:
+      with open('wc_v3/wcb_' + str(tx) + '.pkl', 'r') as fi:
         dc = pickle.load(fi)
         ins = dc['ins']
         app = []
         rsqs =  dc['rnn_seqs']
         wc_trus = dc['ec_tru']  #alternative verion of reality, man
         rn_trus =  dc['rnn_trus']
-        trus = dc['trus']
+        #trus = dc['trus']
     rn_trus = np.array(rn_trus)
     rsqs = np.array(rsqs)
-    trus = np.array(trus)
+    #trus = np.array(trus)
     wc_trus = np.array(wc_trus)
     if tx == 0:
       ins_maxes = np.amax(ins, axis=0)
@@ -95,18 +95,15 @@ for mcx in range(1):
       rn_maxes = []; rn_mins = []
       rn_trumax = rn_trus.max()
       rn_trumin = rn_trus.min()
-      trus_max = trus.max()
+      #trus_max = trus.max()
       wc_trus_max = wc_trus.max()
-      trus_min = trus.min()
+      #trus_min = trus.min()
       wc_trus_min = wc_trus.min()    
-      for rnx in range(4):
+      for rnx in range(5):
         rn_maxes.append(rsqs[:,rnx,:].max())
-        rn_mins.append(rsqs[:,rnx,:].min())
-      trus_cat = trus
-      wc_trus_cat = wc_trus
-      
-    else:
-      trus_cat = np.concatenate((trus_cat, trus), axis=0)
+        rn_mins.append(rsqs[:,rnx,:].min())  
+      wc_trus_cat = wc_trus    
+    else:      
       wc_trus_cat = np.concatenate((wc_trus_cat, wc_trus), axis=0)
       bmaxes =  np.amax(ins, axis=0)
       bmins = np.amin(ins, axis=0)
@@ -128,10 +125,7 @@ for mcx in range(1):
           wc_trus_max = wc_trus.max()
         if wc_trus_min > wc_trus.min():
           wc_trus_min = wc_trus.min()
-        if trus_max < trus.max():
-          trus_max = trus.max()
-        if trus_min > trus.min():
-          trus_min = trus.min()
+
            
     print(rsqs[:,1,:].max())
                    
@@ -142,7 +136,7 @@ for mcx in range(1):
       gtu.arprint(rn_mins)
       gtu.arprint([rn_trumin, rn_trumax])
       gtu.arprint([wc_trus_min, wc_trus_max])
-      gtu.arprint([trus_min, trus_max])   
+    
 
 
 dc = {}
@@ -154,21 +148,12 @@ dc['rn_maxes'] = rn_maxes
 dc['rn_mins'] = rn_mins
 dc['rn_true'] =  [rn_trumin, rn_trumax]
 dc['wc_true'] = [wc_trus_min, wc_trus_max]
-dc['gs_true'] = [trus_min, trus_max]
+
 
 
 with open('test_data/normbook.json', 'w+') as fo:
   json.dump(dc, fo)
 
-wc_trus_cat = np.array(wc_trus_cat)
-trus_cat = np.array(trus_cat)
-err = wc_trus_cat -trus_cat
-sqerr = err * err
-print('true temp errs: min, mean, max, stdev, mse')
-print(err.min(), err.mean(), err.max(), err.std(), sqerr.mean())
- # (-6.355519204792465, -0.047598108296106834, 7.118440377724784, 1.2025000335990614, 1.4482719107191118)
 
 
-fig1, axe1 = scat(wc_trus_cat, trus_cat, 'k', cmp=None, name='Global Solar vs worldclim.org average temp', nrm=None)
-plt.show()
-    
+

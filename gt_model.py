@@ -134,7 +134,7 @@ class climaRNN():
                                stddev=0.01))
     rnn_by = tf.get_variable('rnn_by', None, tf.float32, tf.zeros(y_size))
     hypos = []; losses = []; y_trues = []; lossers = []; h_norms = []; rnno_l1 = []; rnno_mm = [];
-    self.temp_norms = tf.constant(40.0, dtype=tf.float32, shape=[1])
+    self.temp_norms = tf.constant(70.0, dtype=tf.float32, shape=[1])
     outs = tf.concat((fwouts, bwouts), axis=2)
    
     for ix in range(12*_years):
@@ -193,7 +193,7 @@ class climaRNN():
     fd ={}
     r_take = self.params['rnn_take']
     #pdb.set_trace()
-    ins = add_albedo(ins)
+    #ins = add_albedo(ins)
     static_ins =np.take(ins, self.params['take'], axis=1)  #shape batch, 20 odd
     static_norms = np.take(wcb.nn_norms, self.params['take'])  #shape xin length 
     static_multiyr = []

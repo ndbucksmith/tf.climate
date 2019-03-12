@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 import pickle
 import pdb
 import math
-
+import os
+pst = pdb.set_trace
 
 """
 utilites for geotiff files
@@ -28,6 +29,19 @@ class latluts:
              366.9791667,331.9791667,287.9166667,241.6666667,206.25,176.1458333,
               140.7291667]
 mon_wts = [31.0, 28.25, 31.0, 30.0, 31.0, 30.0, 31.0, 31.0, 30.0, 31.0, 30.0, 31.0]
+
+dem3_files = os.listdir('wcdat/dem3')
+dem3_files.sort()
+dem3_rows = [dem3_files[0:6], dem3_files[6:12], dem3_files[12:18], dem3_files[18:24]]
+
+
+def dem3_fix(lon, lat):
+  rowx = int((90.0 - lat)/45.0)
+  colx = int((lon + 180.0)/60.0)
+  fix = (6*rowx)+colx
+  return fix
+
+
 def acc12mo_avg(vals):
   wtd_sum = 0.0
   for mx in range(12):
@@ -47,7 +61,10 @@ def toaPower(lat):
 def arprint(inp):
   ostr = ""
   for ix in range(len(inp)):
-    ostr += str(round(inp[ix], 2))
+    try:
+      ostr += str(round(inp[ix], 2))
+    except:
+      ostr += inp[ix]
     ostr += "  "
   print ostr[0:-2]  
   return ostr[0:-2]
