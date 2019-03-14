@@ -25,7 +25,7 @@ copyright 2019 Nelson 'Buck' Smith
 """
 
 params = {}
-params['sqex'] = True
+params['sqex'] = False
 params['batch_size'] = 400
 b_size = params['batch_size']
 params['pref_width'] = 30
@@ -34,7 +34,7 @@ params['mdl_path'] = 'mdls/v3_test'
 params['learn_rate'] = 0.05
 params['init_stddev'] = 0.5
 params['take'] = [0,1,2,3,4,5,9,10,11,12,13,14,15,18]
-params['rnn_take'] = [0,1,2,3,4]
+params['rnn_take'] = [0,1,2,3,4]; rn_take=params['rnn_take']
 take = params['take']
 params['yrly_size'] = len(params['take'])  #number of static once per year chanels
 params['cell_size'] =  64
@@ -43,6 +43,9 @@ pstr = "training with: "
 
 for idx in range(len(params['take'])):
   pstr += wcb.nn_features[take[idx]]
+  pstr += ', '
+for idx in range(len(rn_take)):
+  pstr += wcb.rnn_features[rn_take[idx]]
   pstr += ', '
 print(pstr)
 target = 'wc_v3' # directory where batch files are
@@ -60,23 +63,25 @@ save_good_model = False; multitrain_history = []
 for mcx in range(1):
   train_history = []
   sess.run(init_op)
-  file_ct = len(os.listdir(target))
+  file_ct = len(os.listdir('epochZ/NST/train'))
+  print file_ct
   params['train_file_ct'] = file_ct
-  for tx_ in range(file_ct):
+  for tx_ in range(3*file_ct):
     start_t = time.time()
     if tx_ < file_ct:
       tx = tx_
     else:
       tx = np.random.randint(0, file_ct)
-    if False:
-      ins, trus = gtb.get_batch(params['batch_size'], True)
+    if True:
+      ins, rsqs, wc_trus, rn_trus, d3_idx  = wcb.get_exbatch(params['batch_size'], True)
+      b_time = start_t - time.time(); # print(b_time);
     else:
       with open(target + '/wcb_' + str(tx) + '.pkl', 'r') as fi:
         dc = pickle.load(fi)
         ins = dc['ins']
         app = []
         rsqs =  dc['rnn_seqs']
-        wc_trus = dc['ec_tru']  #alternative verion of reality, man
+        wc_trus = dc['ec_tru']  
         rn_trus =  dc['rnn_trus']
         d3_idx = dc['d3_idx']
     #pdb.set_trace()
@@ -86,20 +91,21 @@ for mcx in range(1):
  
     errs, ests, step, yt, mts, met_err   = sess.run(fetch, feed)
     errs =np.array(errs)
-    gtu.arprint([mcx, tx_, tx, errs.mean(), errs.max(), errs.min(), met_err])
+    #gtu.arprint([mcx, tx_, tx, errs.mean(), errs.max(), errs.min(), met_err])
+    
     train_history.append( [errs.mean(), errs.max(), errs.min(), met_err] )
-    if tx_ == (file_ct-1):
+    if tx_ == (3*file_ct)-1 or tx_ % 500  == 499 or tx_ ==0:
       if tx_ ==0: 
         gtu.arprint([mcx, tx_, tx, errs.mean(), errs.max(), errs.min(), met_err])
       else:
-        last500 = np.array(train_history)[-30:,:]
+        last500 = np.array(train_history)[-400:,:]
         gtu.arprint([mcx, tx_, 'rnn:', last500[:,0].min(), last500[:,0].mean(), last500[:,0].max()])
         gtu.arprint([mcx, tx_, 'meta:', last500[:,3].min(), last500[:,3].mean(), last500[:,3].max()])
-        if last500[:,3].mean() < 0.475  or  last500[:,3].max() < 0.8:
+        if last500[:,3].mean() < 0.2  or  last500[:,3].max() < 0.6:
           print('saving a v good meta  model')
           save_good_model = True
           break
-        if  last500[:,0].max() < 1.2:
+        if  last500[:,0].max() < 1.0:
           print('saving a v good rnn  model')
           save_good_model = True
           break        
@@ -112,12 +118,15 @@ for mcx in range(1):
 if save_good_model:
   rmdl.save(params['mdl_path'] +'/climarnn_', file_ct)
   with open(params['mdl_path'] + '/params.json', 'w') as fo:
-    json.dump(params, fo)          
-  with open(params['mdl_path'] + '/train_hist.json', 'w') as fo:
-    json.dump(train_history, fo)
-  with open(params['mdl_path'] + '/multitrain_history.json', 'w') as fo:
-    json.dump(multitrain_history, fo)
-        
+    json.dump(params, fo)
+  pst()
+  with open(params['mdl_path'] + '/train_hist.pkl', 'w') as fo:
+    dmp = pickle.dumps(train_history)
+    fo.write(dmp)
+    
+  with open(params['mdl_path'] + '/multitrain_history.pkl', 'w') as fo:
+    dmp = pickle.dumps(multitrain_history,)
+    fo.write(dmp)    
 """
 work around due to  issues with x11 fwd and tmux.  graphing in another .py file
 
@@ -142,4 +151,8 @@ pointsixer = [0.5]* len(train_history)
 axe.plot(oner)
 axe.plot(pointsixer)
 plt.show()
+
+
+
+
 """

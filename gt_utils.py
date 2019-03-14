@@ -34,6 +34,14 @@ dem3_files = os.listdir('wcdat/dem3')
 dem3_files.sort()
 dem3_rows = [dem3_files[0:6], dem3_files[6:12], dem3_files[12:18], dem3_files[18:24]]
 
+global_precip_annual_volume =  505000    #km3
+global_precip_annual_mass = 505000.0E12   #kg
+global_precip_turnover = 7  #days
+total_water_vol_atmosphere =  12900
+total_water_mass_atmosphere = 12900E12
+heatcap_ice = 2.1   # kJ/kg/ deg C
+heatcap_water = 4.2
+heatcap_water_vapor = 1.996 
 
 def dem3_fix(lon, lat):
   rowx = int((90.0 - lat)/45.0)

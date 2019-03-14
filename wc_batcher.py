@@ -6,6 +6,7 @@ import pickle
 import pdb
 import math
 import gt_utils as gtu
+import os
 pst = pdb.set_trace
 
 """
@@ -96,6 +97,9 @@ def blog(msg, lat, lon, val=0.001):
     print(fm)
     fo.write(fm + '\r')
 
+# version 3 with zones  
+eZ_dirs =['epochZ/NP/train/', 'epochZ/NST/train/', 'epochZ/NTR/train/',
+        'epochZ/SP/train/','epochZ/SST/train/', 'epochZ/STR/train/']
 # create all data sources as globals
 elds = rio.open('wcdat/ELE.tif')
 hids = rio.open('wcdat/GHI.tif')
@@ -116,11 +120,11 @@ for tilx in range(24):
   dem3ds.append(rio.open('wcdat/dem3/' + gtu.dem3_files[tilx]))
   #print(dem3ds[tilx].profile['height'],dem3ds[tilx].profile['width'], )
 
-
+"""
 # open list of points withj dem3  data 20 klick squares with data
-with open('epoch3/summary_cts.pkl', 'r') as fi:
-  _dc = pickle.load(fi)
-testcts = _dc['testcts']
+#with open('epoch3/summary_cts.pkl', 'r') as fi:
+#  _dc = pickle.load(fi)
+$testcts = _dc['testcts']
 traincts = _dc['traincts'] 
 train_sums =[]; test_sums = [];
 assert len(traincts) == len(testcts)
@@ -139,7 +143,7 @@ test_total = testcts.sum()
 #print(train_sums)
 print('total 20 klick squares for training:' + str(train_total))
 print('total 20 klick squares for test:' + str(test_total))
-
+"""
 
 #version 3 use index from dem3, get coresponding windows into
 # g tifs with other coordinate systems
@@ -251,17 +255,8 @@ def elev_slope(el, lati):
 
 # build full example with yearly and monthy data
 # some qc checks are ugly but necessary
-def bld_eu_examp(ptix, _unit, bTrain): #an example in eng units
-  ex_good = True
-  if bTrain:
-    wx, pickpt = get_windpt(ptix, train_sums)
-  else:
-    wx, pickpt = get_windpt(ptix, test_sums)
-  #print(wx, pickpt)
-  ex_row  = get_example_index(wx, pickpt, bTrain)
-  d3lax, d3lox, lon, lat = ex_row[0:4]
-  wnd, wcwnd, lcwnd = get_windset(d3lax, d3lox, 10, 10, wx) 
-  
+def bld_eu_examp(wnd, wcwnd, lcwnd, d3lax, d3lox, lon, lat, wx, bTrain): #an example in eng units
+  ex_good = True  
   temp_12mo = []; srad_12mo = []; prec_12mo = []; wind_12mo = []; vap_12mo = [];
   temp_12std = []; srad_12std = []; prec_12std = []; wind_12std = []; vap_12std = [];
   #print(lax, lox, datct)
@@ -364,7 +359,37 @@ def get_batch(size, bTrain):
     wc_trs.append(wc_t)
     rnn_trus.append(t_12)
     d3_idx.append(d3i)
+  return np.array(ins_bat), rnn_seqs, wc_trs, rnn_trus, d3_idx
+
+def get_exbatch(size, bTrain):
+  ins_bat = []; d3_idx = []; rnn_seqs=[];
+  wc_trs=[]; rnn_trus = [];
+  fili = os.listdir('epochZ/NST/train')
+  isli = np.random.randint(0, len(fili), size)
+  for ix in range(size):
+    b_g = False
+    with open('epochZ/NST/train/' + fili[isli[ix]], 'r') as fi:
+      exD   = pickle.load(fi) 
+    ins = exD['ins']; r_s = exD['r_s']; t_12 = exD['t_12'];
+    coord = exD['coords']; wc_t = exD['wc_t']
+    ins_bat.append(ins)
+   # trus_bat.append(temp)
+    rnn_seqs.append(r_s)
+    wc_trs.append(wc_t)
+    rnn_trus.append(t_12)
+    d3_idx.append(coord[-1])
   return np.array(ins_bat), rnn_seqs, wc_trs, rnn_trus, d3_idx  
+
+
+def count_epochZ():
+   dict = {}
+   dict['NP Train'] = len(os.listdir('epochZ/NP/train/'))
+   dict['NST Train'] = len(os.listdir('epochZ/NST/train/'))
+   dict['NTR Train'] = len(os.listdir('epochZ/NTR/train/'))
+   dict['SP Train'] = len(os.listdir('epochZ/SP/train/'))
+   dict['SST Train'] = len(os.listdir('epochZ/SST/train/'))
+   dict['STR Train'] = len(os.listdir('epochZ/STR/train/'))
+   return  dict
 
 
 def sPole_batch(size, bTrain):
@@ -452,3 +477,6 @@ def data_validation_test():
     print(lc)
     print('lc',  lc_histo(lc)  )                 
     pdb.set_trace()   
+
+
+

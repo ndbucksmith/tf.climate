@@ -7,7 +7,6 @@ import pdb
 import math
 import tensorflow as tf
 import gt_utils as gtu
-import gt_batcher as gtb
 import wc_batcher as wcb
 from tensorflow.keras import models
 from tensorflow.keras import layers
@@ -29,6 +28,14 @@ def add_albedo(ins):
   ins_1[:,20] = (ins_1[:,9] * 0.2) + (ins_1[:,10] * 0.1) + (ins_1[:,11] * 0.6)
   return ins_1
 
+
+def try_indx(ar, itm):
+  # for more adaptive dTdx testing
+  try:
+    valx = ar.index(itm)
+  except:
+    valx = None
+  return valx 
 
 class artisanalModel():
   def __init__(self,sess, params, bTrain=True):
@@ -204,11 +211,14 @@ class climaRNN():
    # rins are  batch, feature, month  swap to batch, month, feature
 #________mod to test without precip
     rins_swap = np.take(np.swapaxes(rins, 1, 2), r_take, axis=2)
+    alb_ix = try_indx(self.params['take'], 13)
+
+    static_multiyr = np.array(static_multiyr)
+    stat_swap = np.swapaxes(static_multiyr, 0, 1) # swap to bat,mo,feat
+    rins_swap[:,:,0] = rins_swap[:,:,0] * (1 - stat_swap[:,:,alb_ix])
     rins_multiyr = rins_swap
     for yx in range(yrs-1):
         rins_multiyr = np.concatenate((rins_multiyr, rins_swap), axis=1)
-    static_multiyr = np.array(static_multiyr)
-    stat_swap = np.swapaxes(static_multiyr, 0, 1) # swap to bat,mo,feat
     full_rinset = np.concatenate((stat_swap, rins_multiyr), axis=2)
     full_normset = np.concatenate((static_norms, np.take(wcb.rnn_norms, r_take)))
     fd[self.xin] = full_rinset
