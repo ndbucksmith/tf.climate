@@ -25,7 +25,7 @@ copyright 2019 Nelson 'Buck' Smith
 """
 
 params = {}
-params['sqex'] = False
+params['sqex'] = True
 params['batch_size'] = 400
 b_size = params['batch_size']
 params['pref_width'] = 30
@@ -56,11 +56,11 @@ rmdl = gtm.climaRNN(1, sess, params)
 init_op = tf.global_variables_initializer()
 sess.run(init_op)
 
-
+zb = wcb.zbatch(params['batch_size'])
   # loop for trying large number of model reinits
   # or for multiple runs thru set of training batches
 save_good_model = False; multitrain_history = []
-for mcx in range(1):
+for mcx in range(40):
   train_history = []
   sess.run(init_op)
   file_ct = len(os.listdir('epochZ/NST/train'))
@@ -73,7 +73,7 @@ for mcx in range(1):
     else:
       tx = np.random.randint(0, file_ct)
     if True:
-      ins, rsqs, wc_trus, rn_trus, d3_idx  = wcb.get_exbatch(params['batch_size'], True)
+      ins, rsqs, wc_trus, rn_trus, d3_idx  = zb.zbatch(params['batch_size'], True)
       b_time = start_t - time.time(); # print(b_time);
     else:
       with open(target + '/wcb_' + str(tx) + '.pkl', 'r') as fi:
@@ -98,17 +98,20 @@ for mcx in range(1):
       if tx_ ==0: 
         gtu.arprint([mcx, tx_, tx, errs.mean(), errs.max(), errs.min(), met_err])
       else:
-        last500 = np.array(train_history)[-400:,:]
+        last500 = np.array(train_history)[-490:,:]
         gtu.arprint([mcx, tx_, 'rnn:', last500[:,0].min(), last500[:,0].mean(), last500[:,0].max()])
         gtu.arprint([mcx, tx_, 'meta:', last500[:,3].min(), last500[:,3].mean(), last500[:,3].max()])
-        if last500[:,3].mean() < 0.2  or  last500[:,3].max() < 0.6:
+        if last500[:,3].mean() < 0.38  or  last500[:,3].max() < 0.75:
           print('saving a v good meta  model')
           save_good_model = True
           break
         if  last500[:,0].max() < 1.0:
           print('saving a v good rnn  model')
           save_good_model = True
-          break        
+          break
+        if tx_ > 20000:
+          if not save_good_model:
+            break
 
 
   

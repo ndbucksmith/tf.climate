@@ -68,7 +68,7 @@ vapor rpessure in psi?
 
 
 """
-
+eZtarget = 'epochZ'
 wc_radCon = 86.4 # kJm-2/day > watts m-2
 nn_features = ['lon', 'lat', 'toa_', 'elev', 'barp', 's/t', 'pre_', 'sra_', 'win_',\
                'land', 'wat', 'ice', 'dsrt', 'alb', \
@@ -97,9 +97,18 @@ def blog(msg, lat, lon, val=0.001):
     print(fm)
     fo.write(fm + '\r')
 
-# version 3 with zones  
-eZ_dirs =['epochZ/NP/train/', 'epochZ/NST/train/', 'epochZ/NTR/train/',
-        'epochZ/SP/train/','epochZ/SST/train/', 'epochZ/STR/train/']
+# version 3 with zones
+eZones = ['NP', 'NST', 'NTR', 'STR', 'SST', 'SP']
+eZdist = [0.0, 0.35, 0.2, 0.25, 0.2, 0.0]  #default zone ditribution
+eZtrain_dirs = []; eZtest_dirs = [];
+eZtrain_filis = []; eZtest_filis = [];
+for zx in range(len(eZones)):
+  zo = eZones[zx]
+  eZtrain_dirs.append(eZtarget + '/' + zo + '/' + 'train/')
+  eZtest_dirs.append( eZtarget + '/' + zo + '/' + 'test/')
+  eZtrain_filis.append(os.listdir(eZtrain_dirs[zx]))
+  eZtest_filis.append(os.listdir(eZtest_dirs[zx]))
+                       
 # create all data sources as globals
 elds = rio.open('wcdat/ELE.tif')
 hids = rio.open('wcdat/GHI.tif')
@@ -147,7 +156,7 @@ print('total 20 klick squares for test:' + str(test_total))
 
 #version 3 use index from dem3, get coresponding windows into
 # g tifs with other coordinate systems
-def get_windset(lax, lox, _30sec_x, _30sec_y, d3x):
+def get_windsetdep(lax, lox, _30sec_x, _30sec_y, d3x):
   lon, lat = dem3ds[d3x].xy(lax, lox)
   lrlon, lrlat = dem3ds[d3x].xy(lax + (2*_30sec_x), lox+ (2*_30sec_y))
   wclax, wclox = sradds[0].index(lon, lat)
@@ -165,6 +174,7 @@ def get_windset(lax, lox, _30sec_x, _30sec_y, d3x):
   lcwnd =  rio.windows.Window(lclox, lclax, lcunit , lcunit)
   return  d3wnd, wcwnd, lcwnd
 
+                      
 def wd_filteredstats(wd, nodat):
   wdclean = wd
   if nodat < -3.0e+36:
@@ -210,7 +220,7 @@ def get_windpt(ptx, cts):
     pickpt = ptx - cts[wx-1]
   return wx, pickpt
 
-def get_example_index(wx, pickpt, bTrain):  
+def get_example_indexdep(wx, pickpt, bTrain):  
   fn = 'epoch3/' + gtu.dem3_files[wx]
   fn= fn[0:-4] + '.pkl'
   print(fn)
@@ -361,34 +371,58 @@ def get_batch(size, bTrain):
     d3_idx.append(d3i)
   return np.array(ins_bat), rnn_seqs, wc_trs, rnn_trus, d3_idx
 
-def get_exbatch(size, bTrain):
-  ins_bat = []; d3_idx = []; rnn_seqs=[];
-  wc_trs=[]; rnn_trus = [];
-  fili = os.listdir('epochZ/NST/train')
-  isli = np.random.randint(0, len(fili), size)
-  for ix in range(size):
-    b_g = False
-    with open('epochZ/NST/train/' + fili[isli[ix]], 'r') as fi:
-      exD   = pickle.load(fi) 
-    ins = exD['ins']; r_s = exD['r_s']; t_12 = exD['t_12'];
-    coord = exD['coords']; wc_t = exD['wc_t']
-    ins_bat.append(ins)
-   # trus_bat.append(temp)
-    rnn_seqs.append(r_s)
-    wc_trs.append(wc_t)
-    rnn_trus.append(t_12)
-    d3_idx.append(coord[-1])
-  return np.array(ins_bat), rnn_seqs, wc_trs, rnn_trus, d3_idx  
+class zbatch():
+  def __init__(self, size, zd = eZdist):
+    self.zd = np.array(zd)
+    z_breaks = []
+    assert self.zd.sum() == 1.0
+    for zval in zd:
+      z_breaks.append(int(zval*size))
+    #fix roundign errs
+    if size - np.array(z_breaks).sum() == 1:
+      z_breaks[np.argmax(np.array(z_breaks))] +=1
+    elif size - np.array(z_breaks).sum() == -1:
+      z_breaks[np.argmax(np.array(z_breaks))] -=1
+    elif size - np.array(z_breaks).sum() != 0:
+      raise "Zone distrubtion error"
+    self.z_breaks = z_breaks
+
+   
+  def zbatch(self, size, bTrain):
+    if bTrain:
+      zdirs = eZtrain_dirs
+      zfilis = eZtrain_filis
+    else:
+      zdirs = eZtest_dirs
+      zfilis = eZtest_filis                      
+    ins_bat = []; d3_idx = []; rnn_seqs=[];
+    wc_trs=[]; rnn_trus = [];
+    for zx in range(len(zdirs)):
+      for zbx in range(self.z_breaks[zx]):
+        fix = np.random.randint(0, len(zfilis[zx]))
+        #pst()
+        with open(zdirs[zx]  + zfilis[zx][fix], 'r') as fi:
+          exD   = pickle.load(fi) 
+        ins = exD['ins']; r_s = exD['r_s']; t_12 = exD['t_12'];
+        coord = exD['coords']; wc_t = exD['wc_t']
+        ins_bat.append(ins)
+        rnn_seqs.append(r_s)
+        wc_trs.append(wc_t)
+        rnn_trus.append(t_12)
+        d3_idx.append(coord[-1])
+    return np.array(ins_bat), rnn_seqs, wc_trs, rnn_trus, d3_idx  
 
 
 def count_epochZ():
    dict = {}
-   dict['NP Train'] = len(os.listdir('epochZ/NP/train/'))
-   dict['NST Train'] = len(os.listdir('epochZ/NST/train/'))
-   dict['NTR Train'] = len(os.listdir('epochZ/NTR/train/'))
-   dict['SP Train'] = len(os.listdir('epochZ/SP/train/'))
-   dict['SST Train'] = len(os.listdir('epochZ/SST/train/'))
-   dict['STR Train'] = len(os.listdir('epochZ/STR/train/'))
+   train_ct = 0; test_ct=0;
+   for zo in eZones:
+     dict[zo +  '_train'] = len(os.listdir(eZtarget + '/' + zo + '/train'))
+     train_ct +=  len(os.listdir(eZtarget + '/' + zo + '/train'))
+     dict[zo +  '_test'] = len(os.listdir(eZtarget + '/' + zo + '/test'))
+     test_ct +=  len(os.listdir(eZtarget + '/' + zo + '/test'))
+   dict['train_ct'] = train_ct
+   dict['test _ct'] = test_ct                     
    return  dict
 
 
@@ -477,6 +511,7 @@ def data_validation_test():
     print(lc)
     print('lc',  lc_histo(lc)  )                 
     pdb.set_trace()   
+ 
 
 
 

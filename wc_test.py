@@ -27,9 +27,9 @@ southPoleTest = False
 
 wc_radCon = 86.4 # kJm-2/day > watts m-2
 target = 'wc_v2test'
-file_ct = len(os.listdir(target))
+file_ct = 50 # len(os.listdir(target))
 if southPoleTest: file_ct = 1;
-mdl_path = 'mdls/sqex_111layio_latlon_multirun'
+mdl_path = 'mdls/v3_test' 
 if True:
   with open(mdl_path +'/params.json', 'r') as fi:
     params = json.load(fi)
@@ -61,7 +61,7 @@ def try_indx(ar, itm):
 wc_start = len(params['take']) 
 gs_radx = try_indx(take, 2)  #index used for wiggle jiggle sensitivity
 wc_radx = try_indx(take, 8)
-alb_ix =  len(params['take']) -1
+alb_ix =  try_indx(take, 13)
 prec_x = try_indx(take, 7)
 
 assert wcb.nn_features[take[alb_ix]]  == 'alb'
@@ -106,7 +106,7 @@ sess.run(init_op)
 rmdl.restore(mdl_path + '/climarnn_' + str(params['train_file_ct']) + '.ckpt')
 tvars = tf.trainable_variables()
 tvars_vals = sess.run(tvars)
-
+zb = wcb.zbatch(params['batch_size'])
 if True:
   for var, val in zip(tvars, tvars_vals):
     print(var.name,var.shape)
@@ -120,20 +120,14 @@ height = 0.9
 mm_errs = [];
 for mcx in range(1):
 
-  for tx in range(file_ct):
+  for tx in range(50):
 
     if southPoleTest:
       ins, trus, rsqs, wc_trus, rn_trus = wcb.sPole_batch(400, True)
     else:  
-      with open('wc_v2test/wcb_' + str(tx) + '.pkl', 'r') as fi:
-        dc = pickle.load(fi)
-        ins = dc['ins']
-        app = []
-        rsqs =  np.array(dc['rnn_seqs'])
-        wc_trus = dc['ec_tru']  #alternative verion of reality, man
-        rn_trus =  dc['rnn_trus']
-        trus = dc['trus']
+       ins, rsqs, wc_trus, rn_trus, d3_idx  = zb.zbatch(params['batch_size'], True)
 
+       
 #_______feed, fetch, and run
     feed = rmdl.bld_multiyearfeed(1, ins, rsqs, rn_trus, wc_trus)
     fetch = [rmdl.lossers, rmdl.hypos,  rmdl.y_trues, rmdl.meta_h, rmdl.meta_loss, \
@@ -198,7 +192,7 @@ for mcx in range(1):
       if gs_radx != None:
         feed[rmdl.xin][:,:,gs_radx] = feed[rmdl.xin][:,:,gs_radx] + wig
       if True:   #wc_radx != None:
-       #feed[rmdl.xin][:,:,wc_radx] = feed[rmdl.xin][:,:,wc_radx] +  (wig*wc_radCon)
+       feed[rmdl.xin][:,:,wc_start] = feed[rmdl.xin][:,:,wc_start] +  (wig*wc_radCon)
        feed[rmdl.xin][:,:,wc_start+2] = feed[rmdl.xin][:,:,wc_start+2] + (wig)
 
     def wiggle_prep(factr):
@@ -225,8 +219,9 @@ for mcx in range(1):
 # ____________ make the test map    
     for bx in range(b_size):
       assert feed[rmdl.xin][bx,0,alb_ix] > 0.0
-      assert feed[rmdl.xin][bx,0,alb_ix] < 0.8    
-      test_map.append(np.concatenate( (ins[bx,0:], [feed[rmdl.xin][bx,0,alb_ix]], errs[:,bx,0], overall_errs[bx], \
+      if  feed[rmdl.xin][bx,0,alb_ix] > 0.8:
+        pst()
+      test_map.append(np.concatenate( (ins[bx,0:], errs[:,bx,0], overall_errs[bx], \
                                        dTdP[:,bx,0], [dTdP[:,bx,0].mean()],meta_errs[bx],  \
                                        meta_dTdP[bx],meta_yt[bx],meta_ests[bx], [bx], [tx]) ))
 

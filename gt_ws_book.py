@@ -62,7 +62,7 @@ d3_zoners = [[rg00, rg01], [rg10, rg11], [rg10, rg11], [rg00, rg01]]
 d3_zones = [['NP', 'NST'], ['NST', 'NTR'], ['STR', 'SST'], ['SST', 'SP']]
 zoneTr_cts = {'NP':0, 'NST':0, 'NTR':0, 'STR':0, 'SST':0, 'SP':0}
 zoneTe_cts = {'NP':0, 'NST':0, 'NTR':0, 'STR':0, 'SST':0, 'SP':0}
-tile_ranges = [ (6,12), (12,18), (18,24)]
+tile_ranges = [(0,6), (6,12), (12,18), (18,24)]
 lo_range = range(0, 14400-u15y, u15y)
 
 

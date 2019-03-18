@@ -20,7 +20,7 @@ target = 'wc_v3'
 start_file = len(os.listdir(target)) 
 bTrain = True
 
-for tx in range(start_file, 2000):
+for tx in range(start_file, 3000):
   start_t = time.time()
   ins, rnn_seqs, wc_trues, rnn_trus, d3_idx = wcb.get_batch(400, bTrain)
   dc = {}
