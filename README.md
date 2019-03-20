@@ -35,7 +35,7 @@ New architecture with examples broken into climates zones is faster and more fle
 
 1. with version Z gt_ws_book.py looks at 10 pixel squares in the global solar atlas data files,across all latitudes, saving each good example in folders per the earth's 6 climate zones.  Each square with valid data is assigned to be either a training or test example. output files saved in winstats folder
 
-2. Batchers use the winstat data to pick random 10 pixel squared saved example files to build a batch from train or test data sets. Vversion Z with climates zones uses a new source for elevation the dem3 set of geotiff fiels which provide full global coverage  plus ESACCI-LC land code data which is used to calculate fraction of the pixel square that is land, water, desert, and ice, with fractions summing to ~1.0. Version Z also include land slope, so the model knows if the example faces the sun.
+2. Batchers use the winstat data to pick random 10 pixel squared saved example files to build a batch from train or test data sets. Version Z with climates zones uses a new source for elevation the dem3 set of geotiff fields which provide full global coverage  plus ESACCI-LC land code data which is used to calculate fraction of the pixel square that is land, water, desert, and ice, with fractions summing to ~1.0. Version Z also include land slope, so the model knows if the example faces the sun.
 
 3. Trainers  call the batcher and pas batch to the model to build feeds and fetches for  tf.session.run(), The also print, save, and display results, and save trained models, or at least the ones worth saving. 
 

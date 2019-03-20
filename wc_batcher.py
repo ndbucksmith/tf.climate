@@ -396,20 +396,23 @@ class zbatch():
       zdirs = eZtest_dirs
       zfilis = eZtest_filis                      
     ins_bat = []; d3_idx = []; rnn_seqs=[];
-    wc_trs=[]; rnn_trus = [];
+    wc_trs=[]; rnn_trus = []; batch_ = []
     for zx in range(len(zdirs)):
       for zbx in range(self.z_breaks[zx]):
         fix = np.random.randint(0, len(zfilis[zx]))
-        #pst()
-        with open(zdirs[zx]  + zfilis[zx][fix], 'r') as fi:
-          exD   = pickle.load(fi) 
-        ins = exD['ins']; r_s = exD['r_s']; t_12 = exD['t_12'];
-        coord = exD['coords']; wc_t = exD['wc_t']
-        ins_bat.append(ins)
-        rnn_seqs.append(r_s)
-        wc_trs.append(wc_t)
-        rnn_trus.append(t_12)
-        d3_idx.append(coord[-1])
+        batch_.append([zx, fix, zdirs[zx],  zfilis[zx][fix]])
+    np.random.shuffle(batch_)
+    for bx in range(size):
+      zx = batch_[bx][0]; fix = batch_[bx][1]; 
+      with open(zdirs[zx]  + zfilis[zx][fix], 'r') as fi:
+        exD   = pickle.load(fi) 
+      ins = exD['ins']; r_s = exD['r_s']; t_12 = exD['t_12'];
+      coord = exD['coords']; wc_t = exD['wc_t']
+      ins_bat.append(ins)
+      rnn_seqs.append(r_s)
+      wc_trs.append(wc_t)
+      rnn_trus.append(t_12)
+      d3_idx.append(coord[-1])
     return np.array(ins_bat), rnn_seqs, wc_trs, rnn_trus, d3_idx  
 
 

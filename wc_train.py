@@ -33,8 +33,8 @@ params['metaf_width'] = 31
 params['mdl_path'] = 'mdls/v3_test'
 params['learn_rate'] = 0.05
 params['init_stddev'] = 0.5
-params['take'] = [0,1,2,3,4,5,9,10,11,12,13,14,15,18]
-params['rnn_take'] = [0,1,2,3,4]; rn_take=params['rnn_take']
+params['take'] = [0,1,3,4,5,9,10,11,12,13,14,15,18]
+params['rnn_take'] = [0,1,2,3,]; rn_take=params['rnn_take']
 take = params['take']
 params['yrly_size'] = len(params['take'])  #number of static once per year chanels
 params['cell_size'] =  64
@@ -63,27 +63,15 @@ save_good_model = False; multitrain_history = []
 for mcx in range(40):
   train_history = []
   sess.run(init_op)
-  file_ct = len(os.listdir('epochZ/NST/train'))
+  file_ct = 15000   #  len(os.listdir('epochZ/NST/train'))
   print file_ct
   params['train_file_ct'] = file_ct
   for tx_ in range(3*file_ct):
     start_t = time.time()
-    if tx_ < file_ct:
-      tx = tx_
-    else:
-      tx = np.random.randint(0, file_ct)
-    if True:
-      ins, rsqs, wc_trus, rn_trus, d3_idx  = zb.zbatch(params['batch_size'], True)
-      b_time = start_t - time.time(); # print(b_time);
-    else:
-      with open(target + '/wcb_' + str(tx) + '.pkl', 'r') as fi:
-        dc = pickle.load(fi)
-        ins = dc['ins']
-        app = []
-        rsqs =  dc['rnn_seqs']
-        wc_trus = dc['ec_tru']  
-        rn_trus =  dc['rnn_trus']
-        d3_idx = dc['d3_idx']
+    #randomization now done on the fly in zone batcher
+    ins, rsqs, wc_trus, rn_trus, d3_idx  = zb.zbatch(params['batch_size'], True)
+    b_time = time.time()- start_t; # print(b_time);
+
     #pdb.set_trace()
     feed = rmdl.bld_multiyearfeed(1, ins, rsqs, rn_trus, wc_trus)
 
