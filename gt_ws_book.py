@@ -21,7 +21,7 @@ this function is now rewrit to correctly use raterio index() and xy()
 in place of my homebrew functions which now be removed
 
 """
-targ = 'epochZ/'
+targ = 'epochZ_/'
 
 
 def wd_filteredstats(wd, nodat):

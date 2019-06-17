@@ -215,7 +215,7 @@ class climaRNN():
 
     static_multiyr = np.array(static_multiyr)
     stat_swap = np.swapaxes(static_multiyr, 0, 1) # swap to bat,mo,feat
-    rins_swap[:,:,0] = rins_swap[:,:,0] * (1 - stat_swap[:,:,alb_ix])
+   # rins_swap[:,:,0] = rins_swap[:,:,0] * (1 - stat_swap[:,:,alb_ix])
     rins_multiyr = rins_swap
     for yx in range(yrs-1):
         rins_multiyr = np.concatenate((rins_multiyr, rins_swap), axis=1)

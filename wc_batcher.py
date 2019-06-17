@@ -70,7 +70,7 @@ vapor rpessure in psi?
 """
 eZtarget = 'epochZ'
 wc_radCon = 86.4 # kJm-2/day > watts m-2
-nn_features = ['lon', 'lat', 'toa_', 'elev', 'barp', 's/t', 'pre_', 'sra_', 'win_',\
+nn_features = ['lon', 'lat', 'toa_', 'elev', 'barp', 's/t_', 'pre_', 'sra_', 'win_',\
                'land', 'wat', 'ice', 'dsrt', 'alb', \
                'sh', 'nh', 'rast', 'elst', 'sun','cori', 'zs', 'gtzs', 'ltzs',  \
                 ] 
@@ -79,9 +79,9 @@ nn_norms = [180.0, 90.0,  415.0, 7000.0, 760.0, wc_radCon, 600.0, 25000.0, 11.0,
               1.0, 1.0,  1.0,1.0, 1.0,  \
               1.0, 1.0, 2000.0, 4000.0, 150.0, 150.0, 400.0, 400.0, 400.0,]
 assert len(nn_norms) == nn_feat_len
-rnn_features =['srad','prec','toa','wind', 'vap']
-rnn_norms = [32768.0, 2400.0, 500.0, 11.0, 5]
-rnn_feat_len = 4
+rnn_features =['srad','prec','toa','wind', 'scra', 's/t', 'vap']
+rnn_norms = [32768.0, 2400.0, 500.0, 32768.0, 1.0, 11.0, 5]
+rnn_feat_len = 7
 
 #to build wc data file names
 def str2(mx):
@@ -194,7 +194,7 @@ def wd_filteredstats(wd, nodat):
     wd_std = nodat
   return wdmean, wd_std
 
-#returns fraction of the area that is land, water, ice
+#returns fraction of the area that is land, water, ice, desert
 def lc_histo(lc):
   histo = np.histogram(lc, [0, 5,199, 205, 215, 225, 256])
   recct = float(lc.size -histo[0][0] - histo[0][5])
@@ -210,7 +210,7 @@ def lc_histo(lc):
     print(land, water, ice, desert)
     return land, water, ice, desert                     
 
-def get_windpt(ptx, cts):
+def get_windpt(ptx, cts):#deprecate
   wx = 0 
   while cts[wx]-1 < ptx: # was not pciking zero and crashing one past last index
     wx +=1
@@ -220,7 +220,7 @@ def get_windpt(ptx, cts):
     pickpt = ptx - cts[wx-1]
   return wx, pickpt
 
-def get_example_indexdep(wx, pickpt, bTrain):  
+def get_example_indexdep(wx, pickpt, bTrain):  #deprecate
   fn = 'epoch3/' + gtu.dem3_files[wx]
   fn= fn[0:-4] + '.pkl'
   print(fn)
@@ -269,6 +269,7 @@ def bld_eu_examp(wnd, wcwnd, lcwnd, d3lax, d3lox, lon, lat, wx, bTrain): #an exa
   ex_good = True  
   temp_12mo = []; srad_12mo = []; prec_12mo = []; wind_12mo = []; vap_12mo = [];
   temp_12std = []; srad_12std = []; prec_12std = []; wind_12std = []; vap_12std = [];
+  pwra = []; csra = []
   #print(lax, lox, datct)
   el = dem3ds[wx].read(1, window=wnd)
   if el.shape[0] < 6 or el.shape[1] < 6:
@@ -277,6 +278,24 @@ def bld_eu_examp(wnd, wcwnd, lcwnd, d3lax, d3lox, lon, lat, wx, bTrain): #an exa
     sun_slope, ew_slope = -1.0, -1.0
   else:  
     sun_slope, ew_slope = elev_slope(el, lat)
+  elev = np.nanmean(el)
+  elev_std = np.nanstd(el)
+  if elev < -100:
+    ex_good = False; blog('bad elev: ', lat, lon)
+  lc = lcds.read(1, window=lcwnd)
+  try: 
+    land, water, ice, desert  = lc_histo(lc)
+  except:
+    pst()
+    land, water, ice, desert  = lc_histo(lc)
+  new_alb = (0.1*water) + (0.18*land) + (0.3*desert) + (0.7*ice)
+  if land == -1: ex_good = False;  blog('bad lwi: ', lat, lon)
+  barop = gtu.bp_byalt(elev)
+  if lat > 0:
+    sh1h = 0.0; nh1h = 1.0
+  else:  
+    sh1h = 1.0; nh1h = 0.0 
+  toa_12mo = np.array(gtu.toa_series(lat)) 
   for mx in range(12):
       vmean, vstd = wd_filteredstats(sradds[mx].read(1, window=wcwnd), 65535)  
       srad_12mo.append(vmean); srad_12std.append(vstd)
@@ -286,8 +305,8 @@ def bld_eu_examp(wnd, wcwnd, lcwnd, d3lax, d3lox, lon, lat, wx, bTrain): #an exa
       temp_12mo.append(vmean); temp_12std.append(vstd)
       vmean, vstd  = wd_filteredstats(windds[mx].read(1, window=wcwnd), -3.4e+38)                           
       wind_12mo.append(vmean); wind_12std.append(vstd)
-      vmean, vstd  = wd_filteredstats(vapds[mx].read(1, window=wcwnd), -3.4e+38)                           
-      vap_12mo.append(vmean); vap_12std.append(vstd)     
+      vmean, vstd  = wd_filteredstats(vapds[mx].read(1, window=wcwnd), -3.4e+38)
+      vap_12mo.append(vmean); vap_12std.append(vstd) 
       if srad_12mo[mx] == 65535:
         ex_good = False;
         blog('bad srad ', lat, lon);
@@ -297,14 +316,18 @@ def bld_eu_examp(wnd, wcwnd, lcwnd, d3lax, d3lox, lon, lat, wx, bTrain): #an exa
       if temp_12mo[mx] == -3.4e38:
         ex_good = False;
         blog('bad temp ', lat, lon);
-      
-  toa_12mo = np.array(gtu.toa_series(lat))    
+      csra.append(srad_12mo[mx]*(1-new_alb))
+      if csra[mx] != 0.0:
+        pwra.append(srad_12mo[mx] / (86.4 * csra[mx]))
+      else:
+        pwra.append(0.0)
+               
   temp_12mo = np.array(temp_12mo)
   srad_12mo = np.array(srad_12mo)
   prec_12mo = np.array(prec_12mo)
   wind_12mo = np.array(wind_12mo)
   vap_12mo = np.array(vap_12mo)
-  rnn_seq = [srad_12mo, prec_12mo, toa_12mo, wind_12mo, vap_12mo]
+  rnn_seq = [srad_12mo, prec_12mo, toa_12mo, wind_12mo, csra, pwra, vap_12mo]
   toa_pwr = gtu.toaPower(lat)
   wc_temp = gtu.acc12mo_avg(temp_12mo)
   if wc_temp < - 80  or wc_temp > 80.0:
@@ -322,28 +345,13 @@ def bld_eu_examp(wnd, wcwnd, lcwnd, d3lax, d3lox, lon, lat, wx, bTrain): #an exa
   if wc_wind< 0.0  or wc_wind > 100.0:
     ex_good =False;  blog('bad wc_wind: ', lat, lon, wc_wind)
   #pdb.set_trace()
-  elev = np.nanmean(el)
-  elev_std = np.nanstd(el)
+
   vis_dstd = np.array(srad_12std).mean()
   gtzs = (el > 0.0).sum()
   ltzs = (el < 0.0).sum()
   zs = (el == 0.0).sum()
   pwr_ratio = wc_srad / gtu.acc12mo_avg(toa_12mo)
-  if elev < -100:
-    ex_good = False; blog('bad elev: ', lat, lon)
-  lc = lcds.read(1, window=lcwnd)
-  try: 
-    land, water, ice, desert  = lc_histo(lc)
-  except:
-    pst()
-    land, water, ice, desert  = lc_histo(lc)
-  new_alb = (0.1*water) + (0.18*land) + (0.3*desert) + (0.7*ice)
-  if land == -1: ex_good = False;  blog('bad lwi: ', lat, lon)
-  barop = gtu.bp_byalt(elev)
-  if lat > 0:
-    sh1h = 0.0; nh1h = 1.0
-  else:  
-    sh1h = 1.0; nh1h = 0.0
+
   gtu.arprint([lat, lon,  wc_temp, temp_12mo.min(), temp_12mo.max(), sun_slope, ew_slope, new_alb])
   #print(ex_good)
   ins = [lon, lat, toa_pwr, elev, barop, pwr_ratio, wc_prec, wc_srad, wc_wind, land, water, ice, desert, new_alb, \

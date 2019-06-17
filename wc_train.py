@@ -25,19 +25,19 @@ copyright 2019 Nelson 'Buck' Smith
 """
 
 params = {}
-params['sqex'] = True
+params['sqex'] = False
 params['batch_size'] = 400
 b_size = params['batch_size']
-params['pref_width'] = 30
-params['metaf_width'] = 31
-params['mdl_path'] = 'mdls/v3_test'
+params['pref_width'] = 32
+params['metaf_width'] = 32
+params['mdl_path'] = 'mdls/v3Z_no_squex'
 params['learn_rate'] = 0.05
-params['init_stddev'] = 0.5
-params['take'] = [0,1,3,4,5,9,10,11,12,13,14,15,18]
+params['init_stddev'] = 0.2
+params['take'] = [0,1,3,4,9,10,11,12,13,14,15,]
 params['rnn_take'] = [0,1,2,3,]; rn_take=params['rnn_take']
 take = params['take']
 params['yrly_size'] = len(params['take'])  #number of static once per year chanels
-params['cell_size'] =  64
+params['cell_size'] =  32
 params['rxin_size'] = len(take) + len(params['rnn_take'])  # mdl uses this as rmdl.xin_size
 pstr = "training with: "
 
@@ -66,7 +66,7 @@ for mcx in range(40):
   file_ct = 15000   #  len(os.listdir('epochZ/NST/train'))
   print file_ct
   params['train_file_ct'] = file_ct
-  for tx_ in range(3*file_ct):
+  for tx_ in range(file_ct):
     start_t = time.time()
     #randomization now done on the fly in zone batcher
     ins, rsqs, wc_trus, rn_trus, d3_idx  = zb.zbatch(params['batch_size'], True)
@@ -79,17 +79,17 @@ for mcx in range(40):
  
     errs, ests, step, yt, mts, met_err   = sess.run(fetch, feed)
     errs =np.array(errs)
-    #gtu.arprint([mcx, tx_, tx, errs.mean(), errs.max(), errs.min(), met_err])
+    #gtu.arprint([mcx, tx_, errs.mean(), errs.max(), errs.min(), met_err])
     
     train_history.append( [errs.mean(), errs.max(), errs.min(), met_err] )
-    if tx_ == (3*file_ct)-1 or tx_ % 500  == 499 or tx_ ==0:
+    if tx_ == (file_ct)-1 or tx_ % 500  == 499 or tx_ ==0:
       if tx_ ==0: 
-        gtu.arprint([mcx, tx_, tx, errs.mean(), errs.max(), errs.min(), met_err])
+        gtu.arprint([mcx, tx_, errs.mean(), errs.max(), errs.min(), met_err])
       else:
         last500 = np.array(train_history)[-490:,:]
         gtu.arprint([mcx, tx_, 'rnn:', last500[:,0].min(), last500[:,0].mean(), last500[:,0].max()])
         gtu.arprint([mcx, tx_, 'meta:', last500[:,3].min(), last500[:,3].mean(), last500[:,3].max()])
-        if last500[:,3].mean() < 0.38  or  last500[:,3].max() < 0.75:
+        if last500[:,3].mean() < 0.41  or  last500[:,3].max() < 0.79:
           print('saving a v good meta  model')
           save_good_model = True
           break
@@ -97,7 +97,7 @@ for mcx in range(40):
           print('saving a v good rnn  model')
           save_good_model = True
           break
-        if tx_ > 20000:
+        if tx_ == file_ct -1:
           if not save_good_model:
             break
 
