@@ -3,12 +3,12 @@ import time
 import rasterio as rio
 import matplotlib as plt
 import pickle
-import pdb
+# import pdb
 import math
 import gt_utils as gtu
 import os
 
-pst = pdb.set_trace
+
 
 """
 read geotiff files and generate a batch of examples
@@ -60,9 +60,9 @@ eslp - eastern slope of tile
 zs, gtzs, ltzs - fraction of land at sea level and below and above
 
 Monthly features are
-suraface visble rad in kJm-2/day
+surface visble rad in kJm-2/day
 precipitation in mm
-toa visble flux in watts / m-2
+toa visible flux in watts / m-2
 wind  = km/hr?
 vapor rpessure in psi?  
 
@@ -154,8 +154,16 @@ for zx in range(len(eZones)):
     zo = eZones[zx]
     eZtrain_dirs.append(eZtarget + "/" + zo + "/" + "train/")
     eZtest_dirs.append(eZtarget + "/" + zo + "/" + "test/")
-    eZtrain_filis.append(os.listdir(eZtrain_dirs[zx]))
-    eZtest_filis.append(os.listdir(eZtest_dirs[zx]))
+    try:
+        eZtrain_filis.append(os.listdir(eZtrain_dirs[zx]))
+    except:
+        os.makedirs(eZtrain_dirs[zx])
+        eZtrain_filis.append(os.listdir(eZtrain_dirs[zx]))
+    try:
+        eZtest_filis.append(os.listdir(eZtest_dirs[zx]))
+    except:
+        os.makedirs(eZtest_dirs[zx])
+        eZtest_filis.append(os.listdir(eZtest_dirs[zx]))
 
 # create all data sources as globals
 elds = rio.open("wcdat/ELE.tif")
@@ -206,9 +214,11 @@ print('total 20 klick squares for training:' + str(train_total))
 print('total 20 klick squares for test:' + str(test_total))
 """
 
-# version 3 use index from dem3, get coresponding windows into
+# version 3 use index from dem3, get corresponding windows into
 # g tifs with other coordinate systems
-def get_windsetdep(lax, lox, _30sec_x, _30sec_y, d3x):
+def get_windset_deprecated(lax, lox, _30sec_x, _30sec_y, d3x):
+    """  this is manual conversion from lattitude longtidude to other
+    image coordicate index """
     lon, lat = dem3ds[d3x].xy(lax, lox)
     lrlon, lrlat = dem3ds[d3x].xy(lax + (2 * _30sec_x), lox + (2 * _30sec_y))
     wclax, wclox = sradds[0].index(lon, lat)
@@ -266,7 +276,7 @@ def lc_histo(lc):
 
 def get_windpt(ptx, cts):  # deprecate
     wx = 0
-    while cts[wx] - 1 < ptx:  # was not pciking zero and crashing one past last index
+    while cts[wx] - 1 < ptx:  # was not picking zero and crashing one past last index
         wx += 1
     if wx == 0:  # this is fix for version 2 bug
         pickpt = ptx
@@ -295,35 +305,63 @@ def get_example_indexdep(wx, pickpt, bTrain):  # deprecate
 
 
 def elev_slope(el, lati):
-    mid, east = el.shape[1] / 2, el.shape[1]
-    try:
-        mid_slope, mid_b = np.polyfit(range(el.shape[0]), el[:, mid], 1)  # N+. S-
-    except:
-        pst()
-    east_slope, east_b = np.polyfit(range(el.shape[0]), el[:, east - 1], 1)
-    west_slope, west_b = np.polyfit(range(el.shape[0]), el[:, 0], 1)
-    if lati >= 0.0:  # change ploarity to sun facing = +
-        mid_slope = -mid_slope
-        east_slope = -east_slope
-        west_slope = -west_slope
-    sun_slope = (mid_slope + east_slope + west_slope) / 3.0
-    nsmid, south = el.shape[0] / 2, el.shape[0]
-    nsmid_slope, mid_b = np.polyfit(range(el.shape[1]), el[:, nsmid], 1)  # W+. E-
-    south_slope, east_b = np.polyfit(range(el.shape[1]), el[:, south - 1], 1)
-    north_slope, west_b = np.polyfit(range(el.shape[1]), el[:, 1], 1)
-    if lati >= 0.0:  # change ploarity to coriolis facing = +
-        nsmid_slope = -nsmid_slope
-        south_slope = -south_slope
-        north_slope = -north_slope
-    cori_slope = (nsmid_slope + south_slope + north_slope) / 3.0
-    return sun_slope, cori_slope
+    """
+    calculates the slope of the example area and sets up NS slope with sun facing polarity
+
+
+    """
+    return 0.0, 0.0
+    # mid, east = el.shape[1] / 2, el.shape[1]
+    # try:
+    #     mid_slope, mid_b = np.polyfit(range(el.shape[0]), el[:, mid], 1)  # N+. S-
+    # except Exception as ex:
+    #     print(ex)
+    #     pass # pst()
+    # east_slope, east_b = np.polyfit(range(el.shape[0]), el[:, east - 1], 1)
+    # west_slope, west_b = np.polyfit(range(el.shape[0]), el[:, 0], 1)
+    # if lati >= 0.0:  # change polarity to sun facing = +
+    #     mid_slope = -mid_slope
+    #     east_slope = -east_slope
+    #     west_slope = -west_slope
+    # sun_slope = (mid_slope + east_slope + west_slope) / 3.0
+    # nsmid, south = el.shape[0] / 2, el.shape[0]
+    # nsmid_slope, mid_b = np.polyfit(range(el.shape[1]), el[:, nsmid], 1)  # W+. E-
+    # south_slope, east_b = np.polyfit(range(el.shape[1]), el[:, south - 1], 1)
+    # north_slope, west_b = np.polyfit(range(el.shape[1]), el[:, 1], 1)
+    # if lati >= 0.0:  # change ploarity to coriolis facing = +
+    #     nsmid_slope = -nsmid_slope
+    #     south_slope = -south_slope
+    #     north_slope = -north_slope
+    # cori_slope = (nsmid_slope + south_slope + north_slope) / 3.0
+    # return sun_slope, cori_slope
 
 
 # build full example with yearly and monthy data
 # some qc checks are ugly but necessary
 def bld_eu_examp(
     wnd, wcwnd, lcwnd, d3lax, d3lox, lon, lat, wx, bTrain
-):  # an example in eng units
+):
+
+    """
+
+    :param wnd:
+    :param wcwnd:
+    :param lcwnd:
+    :param d3lax:
+    :param d3lox:
+    :param lon:
+    :param lat:
+    :param wx:
+    :param bTrain:
+    :return:
+        array of annual average values
+        ex_good boolean and of all data qualiy checks
+        rnn_seq the array of monthly values for madel input
+        temp_12mo 12 monthly average temperatures
+        wc+temp one average annual temperature
+        wx index to one of 24 d3 geotif files
+
+    """
     ex_good = True
     temp_12mo = []
     srad_12mo = []
@@ -354,7 +392,7 @@ def bld_eu_examp(
     try:
         land, water, ice, desert = lc_histo(lc)
     except:
-        pst()
+        #  pst()
         land, water, ice, desert = lc_histo(lc)
     new_alb = (0.1 * water) + (0.18 * land) + (0.3 * desert) + (0.7 * ice)
     if land == -1:
@@ -469,7 +507,7 @@ def bld_eu_examp(
         ltzs,
     ]
     return np.array(ins), ex_good, rnn_seq, temp_12mo, wc_temp, wx
-    # wx is index to one 24 d3 geotif files
+    # wx is index to one of 24 d3 geotif files
 
 
 def get_batch(size, bTrain):
@@ -664,7 +702,7 @@ def southPole():
 # pdb.set_trace()
 
 
-# maturn edinburgh  kuwait, ponca city, sydney, port au france
+# maturin edinburgh  kuwait, ponca city, sydney, port au france
 # some of these locations have no data for some params,
 # get_batch(0 + build_eu_example() refect windows with no data or bad data
 def data_validation_test():
@@ -714,4 +752,4 @@ def data_validation_test():
         print("precip", prec_months.mean())
         print(lc)
         print("lc", lc_histo(lc))
-        pdb.set_trace()
+        # pdb.set_trace()

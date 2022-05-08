@@ -3,7 +3,7 @@ import time
 import rasterio as rio
 import matplotlib as plt
 import pickle
-import pdb
+# import pdb
 import math
 import tensorflow as tf
 import gt_utils as gtu
@@ -110,6 +110,12 @@ class artisanalModel:
 
 
 class climaRNN:
+    """
+    _years:   model could be run with more than one year 12 month average temps
+    sess:  tensorflow session
+    params:  mostly the hyperparams
+    """
+
     def __init__(self, _years, sess, params, bTrain=True):
         cell_size = params["cell_size"]
         self.cell_size = cell_size

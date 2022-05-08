@@ -37,7 +37,7 @@ New architecture with examples broken into climates zones is faster and more fle
 
 2. Batchers use the winstat data to pick random 10 pixel squared saved example files to build a batch from train or test data sets. Version Z with climates zones uses a new source for elevation the dem3 set of geotiff fields which provide full global coverage  plus ESACCI-LC land code data which is used to calculate fraction of the pixel square that is land, water, desert, and ice, with fractions summing to ~1.0. Version Z also include land slope, so the model knows if the example faces the sun.
 
-3. Trainers  call the batcher and pas batch to the model to build feeds and fetches for  tf.session.run(), The also print, save, and display results, and save trained models, or at least the ones worth saving. 
+3. Trainers  call the batcher and passes batch to the model to build feeds and fetches for  tf.session.run(), The also print, save, and display results, and save trained models, or at least the ones worth saving. 
 
 4. Testers run through batches and build a map of test data  with longitude and latitude for traceability  It performs a simple sensitivity test on each batch by adding a delta watts increment to surface solar channels and then measuring the resulting delta in temperature. The sensitivities are included in the map data set.  From the map  global scatter plots of test error and sensitivity are made with matplotlib as well as many other graphs  e.g. sensitivity and error versus latitude, elevation, surface power and toa power.
 

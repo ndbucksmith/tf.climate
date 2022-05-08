@@ -5,11 +5,11 @@ import rasterio as rio
 import matplotlib
 import matplotlib.pyplot as plt
 import pickle
-import pdb
+# import pdb
 import math
 import os
 
-pst = pdb.set_trace
+
 
 """
 utilites for geotiff files
@@ -138,7 +138,7 @@ def arprint(inp):
         except:
             ostr += inp[ix]
         ostr += "  "
-    print ostr[0:-2]
+    print(ostr[0:-2])
     return ostr[0:-2]
 
 

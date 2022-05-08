@@ -3,26 +3,26 @@ import time
 import rasterio as rio
 import matplotlib as plt
 import pickle
-import pdb
+# import pdb
 import math
 import gt_utils as gtu
 import wc_batcher as wcb
 import warnings
 
 warnings.filterwarnings("error")
-pst = pdb.set_trace
+
 
 """
 create pkl files with dicts for each window
 version 3 uses dem3 files for elevation.  
-There are 24 files to cover eath with 15" res elevation data
-this is 2x better reesolution gs elevation and also cover the planet
+There are 24 files to cover earth with 15" res elevation data
+this is 2x better resolution gs elevation and also cover the planet
 as in geotif nodata = None
-this function is now rewrit to correctly use raterio index() and xy()
+this function is now rewritten to correctly use raterio index() and xy()
 in place of my homebrew functions which now be removed
 
 """
-targ = "epochZ_/"
+targ = "epochZ/"
 
 
 def wd_filteredstats(wd, nodat):
@@ -41,15 +41,14 @@ def wd_filteredstats(wd, nodat):
         wdmean = nodat
     return wdmean
 
-
-unit_x = 10
-unit_y = 10  # 30 second units
+"""  geotif files with 30 second and 15 second resolution"""
+unit_x = 32
+unit_y = 32  # 30 second units
 u15x = 2 * unit_x
-u15y = 2 * unit_y
-# 15 second units
-hids = rio.open("wcdat/srad/wc2.0_30s_srad_01.tif")
-teds = rio.open("wcdat/tavg/wc2.0_30s_tavg_01.tif")
-lcds = rio.open("wcdat/lc/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2015-v2.0.7.tif")
+u15y = 2 * unit_y  # 15 second units
+hids = rio.open("wcdat/srad/wc2.0_30s_srad_01.tif") # type: rio.DatasetReader
+teds = rio.open("wcdat/tavg/wc2.0_30s_tavg_01.tif") # type: rio.DatasetReader
+lcds = rio.open("wcdat/lc/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2015-v2.0.7.tif") # type: rio.DatasetReader
 _st = time.time()
 traincts = []
 testcts = []
@@ -81,7 +80,7 @@ lo_range = range(0, 14400 - u15y, u15y)
 def zone_chk(d3lax, zoneset):
     top = d3lax in zoneset[0]
     bottom = d3lax in zoneset[1]
-    assert top != bottom
+    # assert top != bottom
     return top, bottom
 
 
@@ -149,6 +148,8 @@ for d3row in range(4):
                     el_datact = 0
                 if hi_datact > 3 and te_datact > 3 and lc_datact > 3 and el_datact > 3:
                     to, bo = zone_chk(d3lax, d3_zoners[d3row])
+                    if to == bo:
+                        print("assert fail ", to, bo, d3_zoners, d3row)
                     if to:
                         zone = d3_zones[d3row][0]
                     else:
@@ -157,7 +158,7 @@ for d3row in range(4):
                     # if examp_ct % 5000 == 1:
                     print(lon, lat, elev, hi_datact, te_datact, lc_datact)
                     examp_ct += 1
-
+                    # allocate 90% to train and 10% to test
                     if np.random.random() < 0.9:
                         trix.append(
                             [
@@ -245,9 +246,11 @@ for d3row in range(4):
                             "t_12": t_12,
                             "wc_t": wc_t,
                         }
-                        with open(fpath, "w") as fo:
+                        with open(fpath, "wb") as fo:
                             dmp = pickle.dumps(exD)
                             fo.write(dmp)
+                    else:
+                        print("data discarded ", wc_t, t_12)
 
                 else:
                     badct += 1
@@ -270,7 +273,7 @@ for d3row in range(4):
         print(trainct, testct, "time:", time.time() - _st)
         print(badct, hi_badct, te_badct, lc_badct, el_badct)
         print(zoneTr_cts)
-        with open(targ + gtu.dem3_files[tilx][0:-4] + ".pkl", "w") as fo:
+        with open(targ + gtu.dem3_files[tilx][0:-4] + ".pkl", "wb") as fo:
             dmp = pickle.dumps(dc)
             fo.write(dmp)
         traincts.append(trainct)
@@ -283,7 +286,9 @@ dc["testcts"] = testcts
 dc["traincts"] = traincts
 dc["testcts"] = testcts
 dc["traincts"] = traincts
-with open(targ + "/summary_cts.pkl", "w") as fo:
+print(dc)
+print("total train set size: " + str(traincts.sum()))
+with open(targ + "/summary_cts.pkl", "wb") as fo:
     dmp = pickle.dumps(dc)
     fo.write(dmp)
 print(dc)

@@ -4,7 +4,7 @@ import rasterio as rio
 import matplotlib
 import matplotlib.pyplot as plt
 import pickle
-import pdb
+# import pdb
 import math
 import tensorflow as tf
 import gt_utils as gtu

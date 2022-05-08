@@ -3,7 +3,7 @@ import time
 import rasterio as rio
 import matplotlib.pyplot as plt
 import pickle
-import pdb
+# import pdb
 import math
 import tensorflow as tf
 import gt_utils as gtu
@@ -12,7 +12,7 @@ import wc_batcher as wcb
 import os
 import json
 
-pst = pdb.set_trace
+
 
 """
 trains rnn climate model using tf bidrectional dynamic rnn.  Using dynamic rnn even though 
@@ -86,7 +86,7 @@ for mcx in range(40):
     train_history = []
     sess.run(init_op)
     file_ct = 15000  #  len(os.listdir('epochZ/NST/train'))
-    print file_ct
+    print(file_ct)
     params["train_file_ct"] = file_ct
     for tx_ in range(file_ct):
         start_t = time.time()
@@ -157,7 +157,6 @@ if save_good_model:
     rmdl.save(params["mdl_path"] + "/climarnn_", file_ct)
     with open(params["mdl_path"] + "/params.json", "w") as fo:
         json.dump(params, fo)
-    pst()
     with open(params["mdl_path"] + "/train_hist.pkl", "w") as fo:
         dmp = pickle.dumps(train_history)
         fo.write(dmp)
@@ -165,6 +164,9 @@ if save_good_model:
     with open(params["mdl_path"] + "/multitrain_history.pkl", "w") as fo:
         dmp = pickle.dumps(multitrain_history,)
         fo.write(dmp)
+
+
+
 """
 work around due to  issues with x11 fwd and tmux.  graphing in another .py file
 

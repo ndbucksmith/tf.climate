@@ -3,7 +3,7 @@ import time
 import rasterio as rio
 import matplotlib as plt
 import pickle
-import pdb
+# import pdb
 import math
 import gt_utils as gtu
 import wc_batcher as wcb

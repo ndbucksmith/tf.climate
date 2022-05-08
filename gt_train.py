@@ -3,7 +3,7 @@ import time
 import rasterio as rio
 import matplotlib as plt
 import pickle
-import pdb
+# import pdb
 import math
 import tensorflow as tf
 import gt_utils as gtu
@@ -79,7 +79,7 @@ for mcx in range(1):
         #         ins[:,9].max(), ins[:,10].max(), ins[:,11].max())
         # pdb.set_trace()
     if errs < smerrs:
-        pdb.set_trace()
+        pass #pdb.set_trace()
     else:
         pass  # mdl.reup()  # reinit and try again
 
@@ -105,4 +105,4 @@ for ix in range(params["batch_size"]):
     )
 
     if ix % 20 == 19:
-        pdb.set_trace()
+        pass # pdb.set_trace()
