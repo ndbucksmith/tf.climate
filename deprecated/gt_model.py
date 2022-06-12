@@ -8,10 +8,12 @@ import math
 import tensorflow as tf
 import gt_utils as gtu
 import wc_batcher as wcb
-from tensorflow.keras import models
-from tensorflow.keras import layers
 
-pst = pdb.set_trace
+
+# from tf.keras import models
+# from tf.keras import layers
+
+
 
 """
 tensorflow models to predict temperature as a function of solar power, toa power, elevation
