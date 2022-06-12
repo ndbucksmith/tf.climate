@@ -7,22 +7,22 @@ import pickle
 import math
 import gt_utils as gtu
 import wc_batcher as wcb
+import epoch_config as ec
 import warnings
 
 warnings.filterwarnings("error")
-
 
 """
 create pkl files with dicts for each window
 version 3 uses dem3 files for elevation.  
 There are 24 files to cover earth with 15" res elevation data
-this is 2x better resolution gs elevation and also cover the planet
+this is 2x better resolution for elevation and also covers the planet
 as in geotif nodata = None
 this function is now rewritten to correctly use raterio index() and xy()
-in place of my homebrew functions which now be removed
+in place of homebrew functions which now be removed
 
 """
-targ = "epochZ/"
+targ = ec.targ
 
 
 def wd_filteredstats(wd, nodat):
@@ -41,14 +41,15 @@ def wd_filteredstats(wd, nodat):
         wdmean = nodat
     return wdmean
 
+
 """  geotif files with 30 second and 15 second resolution"""
-unit_x = 32
-unit_y = 32  # 30 second units
+unit_x = ec.unit_x
+unit_y = ec.unit_y  # 30 second units
 u15x = 2 * unit_x
 u15y = 2 * unit_y  # 15 second units
-hids = rio.open("wcdat/srad/wc2.0_30s_srad_01.tif") # type: rio.DatasetReader
-teds = rio.open("wcdat/tavg/wc2.0_30s_tavg_01.tif") # type: rio.DatasetReader
-lcds = rio.open("wcdat/lc/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2015-v2.0.7.tif") # type: rio.DatasetReader
+hids = rio.open("wcdat/srad/wc2.0_30s_srad_01.tif")  # type: rio.DatasetReader
+teds = rio.open("wcdat/tavg/wc2.0_30s_tavg_01.tif")  # type: rio.DatasetReader
+lcds = rio.open("wcdat/lc/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2015-v2.0.7.tif")  # type: rio.DatasetReader
 _st = time.time()
 traincts = []
 testcts = []
@@ -139,13 +140,14 @@ for d3row in range(4):
                 else:
                     te_datact = 0
                 lc_datact = (
-                    (lc.shape[0] * lc.shape[1]) - (lc == 0).sum() - (lc == 255).sum()
+                        (lc.shape[0] * lc.shape[1]) - (lc == 0).sum() - (lc == 255).sum()
                 )
                 try:
                     elev = el.mean()
                     el_datact = (el > -500).sum()
                 except:
                     el_datact = 0
+                #don't evaluate datasets unless there are 3 datapoints for major varaiables
                 if hi_datact > 3 and te_datact > 3 and lc_datact > 3 and el_datact > 3:
                     to, bo = zone_chk(d3lax, d3_zoners[d3row])
                     if to == bo:
@@ -204,11 +206,13 @@ for d3row in range(4):
                             d3ws, wcws, lcws, d3lax, d3lox, lon, lat, tilx, False
                         )
 
+
                     def fmlat(co):
                         if co > 0.0:
                             return "_N" + str(int(round(co, 2) * 100))
                         else:
                             return "_S" + str(int(round(co, 2) * 100))[1:]
+
 
                     def fmlon(co):
                         if co > 0.0:
@@ -216,28 +220,29 @@ for d3row in range(4):
                         else:
                             return "_W" + str(int(round(co, 2) * 100))[1:]
 
-                    if b_g:
+
+                    if b_g:   # if example is good save to train or test
                         if bTrain:
                             zoneTr_cts[zone] += 1
                             fpath = (
-                                targ
-                                + zone
-                                + "/train/ex_"
-                                + str(zoneTr_cts[zone])
-                                + fmlon(lon)
-                                + fmlat(lat)
-                                + ".pkl"
+                                    targ
+                                    + zone
+                                    + "/train/ex_"
+                                    + str(zoneTr_cts[zone])
+                                    + fmlon(lon)
+                                    + fmlat(lat)
+                                    + ".pkl"
                             )
                         else:
                             zoneTe_cts[zone] += 1
                             fpath = (
-                                targ
-                                + zone
-                                + "/test/ex_"
-                                + str(zoneTe_cts[zone])
-                                + fmlon(lon)
-                                + fmlat(lat)
-                                + ".pkl"
+                                    targ
+                                    + zone
+                                    + "/test/ex_"
+                                    + str(zoneTe_cts[zone])
+                                    + fmlon(lon)
+                                    + fmlat(lat)
+                                    + ".pkl"
                             )
                         exD = {
                             "coords": [d3lax, d3lox, lon, lat, tilx],
@@ -292,4 +297,4 @@ with open(targ + "/summary_cts.pkl", "wb") as fo:
     dmp = pickle.dumps(dc)
     fo.write(dmp)
 print(dc)
-print("total train set size: " + str(traincts.sum()))
+print("total test set size: " + str(testcts.sum()))
