@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 import time
 import rasterio as rio
@@ -6,9 +8,8 @@ import pickle
 # import pdb
 import math
 import gt_utils as gtu
+import epoch_config as ec
 import os
-
-
 
 """
 read geotiff files and generate a batch of examples
@@ -64,12 +65,13 @@ surface visble rad in kJm-2/day
 precipitation in mm
 toa visible flux in watts / m-2
 wind  = km/hr?
+scra  - albedo correct surface rad
 vapor rpessure in psi?  
 
 
 
 """
-eZtarget = "epochZ"
+eZtarget = ec.targ
 wc_radCon = 86.4  # kJm-2/day > watts m-2
 nn_features = [
     "lon",
@@ -124,8 +126,9 @@ nn_norms = [
 ]
 assert len(nn_norms) == nn_feat_len
 rnn_features = ["srad", "prec", "toa", "wind", "scra", "s/t", "vap"]
-rnn_norms = [32768.0, 2400.0, 500.0, 32768.0, 1.0, 11.0, 5]
+rnn_norms = [50000.0, 500.0, 500.0, 25.0, 1.0, 11.0, 5]
 rnn_feat_len = 7
+
 
 # to build wc data file names
 def str2(mx):
@@ -143,27 +146,27 @@ def blog(msg, lat, lon, val=0.001):
         fo.write(fm + "\r")
 
 
-# version 3 with zones
+# version 3 with zones EMCRt3tona
 eZones = ["NP", "NST", "NTR", "STR", "SST", "SP"]
-eZdist = [0.0, 0.35, 0.2, 0.25, 0.2, 0.0]  # default zone ditribution
+eZdist = [0.1, 0.2, 0.2, 0.2, 0.2, 0.1]  # default zone distribution
 eZtrain_dirs = []
 eZtest_dirs = []
-eZtrain_filis = []
-eZtest_filis = []
+eZtrain_files = []
+eZtest_files = []
 for zx in range(len(eZones)):
     zo = eZones[zx]
     eZtrain_dirs.append(eZtarget + "/" + zo + "/" + "train/")
     eZtest_dirs.append(eZtarget + "/" + zo + "/" + "test/")
     try:
-        eZtrain_filis.append(os.listdir(eZtrain_dirs[zx]))
+        eZtrain_files.append(os.listdir(eZtrain_dirs[zx]))
     except:
         os.makedirs(eZtrain_dirs[zx])
-        eZtrain_filis.append(os.listdir(eZtrain_dirs[zx]))
+        eZtrain_files.append(os.listdir(eZtrain_dirs[zx]))
     try:
-        eZtest_filis.append(os.listdir(eZtest_dirs[zx]))
+        eZtest_files.append(os.listdir(eZtest_dirs[zx]))
     except:
         os.makedirs(eZtest_dirs[zx])
-        eZtest_filis.append(os.listdir(eZtest_dirs[zx]))
+        eZtest_files.append(os.listdir(eZtest_dirs[zx]))
 
 # create all data sources as globals
 elds = rio.open("wcdat/ELE.tif")
@@ -189,30 +192,33 @@ for tilx in range(24):
     dem3ds.append(rio.open("wcdat/dem3/" + gtu.dem3_files[tilx]))
     # print(dem3ds[tilx].profile['height'],dem3ds[tilx].profile['width'], )
 
-"""
-# open list of points withj dem3  data 20 klick squares with data
-#with open('epoch3/summary_cts.pkl', 'r') as fi:
-#  _dc = pickle.load(fi)
-$testcts = _dc['testcts']
-traincts = _dc['traincts'] 
-train_sums =[]; test_sums = [];
-assert len(traincts) == len(testcts)
-#builds lists to index window
-for wx in range(len(traincts)):
-  if wx==0:
-    train_sums.append(traincts[wx])
-    test_sums.append(testcts[wx])
-  else:
-    train_sums.append(train_sums[wx-1] +  traincts[wx])
-    test_sums.append(test_sums[wx-1] +  testcts[wx])
-train_sums = np.array(train_sums)
-test_sums = np.array(test_sums)
-train_total = traincts.sum()
-test_total = testcts.sum()
-#print(train_sums)
-print('total 20 klick squares for training:' + str(train_total))
-print('total 20 klick squares for test:' + str(test_total))
-"""
+# open list of points with dem3  data 20 klick squares with data
+if 'summary_cts.pkl' in os.listdir(ec.targ):
+    with open(f'{ec.targ}summary_cts.pkl', 'rb') as fi:
+        _dc = pickle.load(fi)
+    testcts = _dc['testcts']
+    traincts = _dc['traincts']
+    train_sums = [];
+    test_sums = [];
+    assert len(traincts) == len(testcts)
+    # builds lists to index window
+    for wx in range(len(traincts)):
+        if wx == 0:
+            train_sums.append(traincts[wx])
+            test_sums.append(testcts[wx])
+        else:
+            train_sums.append(train_sums[wx - 1] + traincts[wx])
+            test_sums.append(test_sums[wx - 1] + testcts[wx])
+    train_sums = np.array(train_sums)
+    test_sums = np.array(test_sums)
+    train_total = traincts.sum()
+    test_total = testcts.sum()
+    # print(train_sums)
+    print('total squares for training:' + str(train_total))
+    print('total squares for test:' + str(test_total))
+else:
+    print("epoch examples not complete, rerun gt_ws_book, unable to batch")
+
 
 # version 3 use index from dem3, get corresponding windows into
 # g tifs with other coordinate systems
@@ -238,6 +244,10 @@ def get_windset_deprecated(lax, lox, _30sec_x, _30sec_y, d3x):
 
 
 def wd_filteredstats(wd, nodat):
+    """   get an average and a std deviation
+    for all pixels with valid data
+    todo revise std dev calc to account for zeros
+    """
     wdclean = wd
     if nodat < -3.0e36:
         ndct = (wd < -3.0e36).sum()
@@ -259,6 +269,9 @@ def wd_filteredstats(wd, nodat):
 
 # returns fraction of the area that is land, water, ice, desert
 def lc_histo(lc):
+    """
+    returns fraction of the area that is land, water, ice, desert
+     """
     histo = np.histogram(lc, [0, 5, 199, 205, 215, 225, 256])
     recct = float(lc.size - histo[0][0] - histo[0][5])
     # pdb.set_trace()
@@ -339,9 +352,8 @@ def elev_slope(el, lati):
 # build full example with yearly and monthy data
 # some qc checks are ugly but necessary
 def bld_eu_examp(
-    wnd, wcwnd, lcwnd, d3lax, d3lox, lon, lat, wx, bTrain
+        wnd, wcwnd, lcwnd, d3lax, d3lox, lon, lat, wx, bTrain
 ):
-
     """
 
     :param wnd:
@@ -354,12 +366,12 @@ def bld_eu_examp(
     :param wx:
     :param bTrain:
     :return:
-        array of annual average values
-        ex_good boolean and of all data qualiy checks
-        rnn_seq the array of monthly values for madel input
-        temp_12mo 12 monthly average temperatures
-        wc+temp one average annual temperature
-        wx index to one of 24 d3 geotif files
+        ins: array of annual average values
+        ex_good: boolean and of all data qualiy checks
+        rnn_seq: the array of monthly values for madel input
+        temp_12mo: 12 monthly average temperatures
+        wc+temp: one average annual temperature
+        wx: index to one of 24 d3 geotif files
 
     """
     ex_good = True
@@ -431,7 +443,7 @@ def bld_eu_examp(
         if temp_12mo[mx] == -3.4e38:
             ex_good = False
             blog("bad temp ", lat, lon)
-        csra.append(srad_12mo[mx] * (1 - new_alb))
+        csra.append(srad_12mo[mx] * (1 - new_alb))  # this is albedo corrected but with annual albedo number ugh
         if csra[mx] != 0.0:
             pwra.append(srad_12mo[mx] / (86.4 * csra[mx]))
         else:
@@ -511,6 +523,7 @@ def bld_eu_examp(
 
 
 def get_batch(size, bTrain):
+    """ original batch builder deprecated for zBatch"""
     ins_bat = []
     d3_idx = []
     rnn_seqs = []
@@ -538,7 +551,7 @@ class zbatch:
     def __init__(self, size, zd=eZdist):
         self.zd = np.array(zd)
         z_breaks = []
-        assert self.zd.sum() == 1.0
+        print(self.zd.sum())
         for zval in zd:
             z_breaks.append(int(zval * size))
         # fix roundign errs
@@ -547,16 +560,16 @@ class zbatch:
         elif size - np.array(z_breaks).sum() == -1:
             z_breaks[np.argmax(np.array(z_breaks))] -= 1
         elif size - np.array(z_breaks).sum() != 0:
-            raise "Zone distrubtion error"
+            raise Exception("Zone distribution error")
         self.z_breaks = z_breaks
 
     def zbatch(self, size, bTrain):
         if bTrain:
             zdirs = eZtrain_dirs
-            zfilis = eZtrain_filis
+            zfilis = eZtrain_files
         else:
             zdirs = eZtest_dirs
-            zfilis = eZtest_filis
+            zfilis = eZtest_files
         ins_bat = []
         d3_idx = []
         rnn_seqs = []
@@ -571,10 +584,16 @@ class zbatch:
         for bx in range(size):
             zx = batch_[bx][0]
             fix = batch_[bx][1]
-            with open(zdirs[zx] + zfilis[zx][fix], "r") as fi:
+            with open(zdirs[zx] + zfilis[zx][fix], "rb") as fi:
                 exD = pickle.load(fi)
             ins = exD["ins"]
+            ins = ins / nn_norms
             r_s = exD["r_s"]
+            to_div = []
+            for mx in range(12):
+                to_div.append(rnn_norms)
+            to_div_rev = np.reshape(to_div, [7, 12])
+            r_s = np.array(r_s) / to_div_rev
             t_12 = exD["t_12"]
             coord = exD["coords"]
             wc_t = exD["wc_t"]
@@ -584,6 +603,93 @@ class zbatch:
             rnn_trus.append(t_12)
             d3_idx.append(coord[-1])
         return np.array(ins_bat), rnn_seqs, wc_trs, rnn_trus, d3_idx
+
+    def get_batch(self, size, bTrain):
+        """
+        random batcher using examples saved by zone
+        """
+        if bTrain:
+            zdirs = eZtrain_dirs
+            zfilis = eZtrain_files
+        else:
+            zdirs = eZtest_dirs
+            zfilis = eZtest_files
+        ins_bat = []
+        d3_idx = []
+        rnn_seqs = []
+        wc_trs = []
+        rnn_trus = []
+        batch_ = []
+        file_count = 0
+        file_count_list = []
+        for ix in range(len(zfilis)):
+            file_count += len(zfilis[ix])
+            file_count_list.append(len(zfilis[ix]))
+
+        for bx in range(size):
+            ix = random.randint(0, file_count)
+            zone_total = 0
+            zx = 0
+            while sum(file_count_list[0:zx + 1]) <= ix:
+                zx += 1
+                if zx > 5:
+                    raise Exception(f"file list error {ix}")
+            fix = ix - sum(file_count_list[0:zx])
+            try:
+                with open(zdirs[zx] + zfilis[zx][fix], "rb") as fi:
+                    exD = pickle.load(fi)
+            except:
+                raise Exception(f"file open error with {zx} {fix} {ix}")
+            ins = exD["ins"]
+            ins = ins / nn_norms
+            r_s = exD["r_s"]
+            to_div = []
+            for mx in range(12):
+                to_div.append(rnn_norms)
+            to_div_rev = np.reshape(to_div, [7, 12])
+            r_s = np.array(r_s) / to_div_rev
+            t_12 = exD["t_12"]
+            coord = exD["coords"]
+            wc_t = exD["wc_t"]
+            ins_bat.append(ins)
+            rnn_seqs.append(r_s)
+            wc_trs.append(wc_t)
+            rnn_trus.append(t_12)
+            d3_idx.append(coord[-1])
+        return np.array(ins_bat), rnn_seqs, wc_trs, rnn_trus, d3_idx
+
+
+def small_flat_batch(static_ins, rnn_ins):
+    """
+    create input batch to rnn where static values are concatenated on to monthly values with same
+     value each month.  Assumes static_ins are [batch, width]  and rnn_ins are [batch, 4, Month]
+
+     """
+    appended_batch = np.array([])
+    batch_size = len(static_ins)
+    stat_width = len(static_ins[0])
+    for bx in range(batch_size):
+        new_arrs = []
+        # for ix in range(4):
+        to_append = []
+        for mx in range(12):
+            to_append.append(static_ins[bx, :])
+        to_append = np.array(to_append)  # 12 by 4
+        # print(to_append)
+        # print(rnn_ins[bx].shape)
+        to_append_x = to_append.reshape([stat_width, 12])  # swap to 4 by 12
+        # scaled_ins = [rnn_ins[0][bx][:], rnn_ins[1][bx][:], rnn_ins[2][bx][:], rnn_ins[3][bx][:]]
+        new_arr = np.append(rnn_ins[bx], to_append_x, axis=0)  # now at 8 by 12
+        new_arrs.append(new_arr)
+        # print("new arr shape ", new_arr.shape)
+        # print(len(new_arrs), new_arrs[0].shape)
+        if bx == 0:
+            full_rnn_input_dataset = 1
+            appended_batch = np.array(new_arrs)
+        else:
+            appended_batch = np.append(appended_batch, new_arrs, axis=0)
+    # print("appended batch shape", appended_batch.shape)
+    return appended_batch
 
 
 def count_epochZ():
@@ -644,13 +750,13 @@ def southPole():
     toa_pwr = gtu.acc12mo_avg(toa_12)
     srad12 = toa_12 * pwr_ratio * 75.0
     prec12 = (
-        np.array(
-            [0.36, 0.23, 0.17, 0.17, 0.22, 0.21, 0.17, 0.17, 0.14, 0.11, 0.09, 0.23]
-        )
-        * 25.4
+            np.array(
+                [0.36, 0.23, 0.17, 0.17, 0.22, 0.21, 0.17, 0.17, 0.14, 0.11, 0.09, 0.23]
+            )
+            * 25.4
     )  # inches > mm
     wind12 = (
-        np.array([11, 12, 13, 13, 13, 15, 14, 13, 13, 12, 11, 10]) * 0.1
+            np.array([11, 12, 13, 13, 13, 15, 14, 13, 13, 12, 11, 10]) * 0.1
     )  # this is mph?? does nto seem right
     elev = 5000 / 3.1
     elev_std = 50.0
@@ -718,7 +824,7 @@ def data_validation_test():
     GISStemps = [27.5, 8.5, 28.0, 15.0, 18.0, 5.0, 27]
     for ix in range(len(pickpts)):
         lax, lox = elds.index(pickpts[ix][0], pickpts[ix][1])
-        wnd, wcwnd, lcwnd = get_windset(lax, lox, 2)
+        wnd, wcwnd, lcwnd = get_windset_deprecated(lax, lox, 2)
         gloTemp = np.nanmean(teds.read(1, window=wnd))
         gloSRAD = np.nanmean(hids.read(1, window=wnd)) * 1000.0 / 24.0
         lc = lcds.read(1, window=lcwnd)
@@ -753,3 +859,20 @@ def data_validation_test():
         print(lc)
         print("lc", lc_histo(lc))
         # pdb.set_trace()
+
+
+def main():
+    batch_size = 10
+
+    # b = get_batch(10, True)
+    zb = zbatch(batch_size)
+    tb = zb.get_batch(batch_size, True)
+    static_ins = np.take(tb[0], [3, 13, 14, 15], axis=1)
+    print(static_ins.shape)
+    rnn_ins = np.take(tb[1], [0, 1, 2, 3], axis=1)
+    print("rnn ins shape ", rnn_ins.shape)
+    sfb = small_flat_batch(static_ins=static_ins, rnn_ins=rnn_ins)
+
+
+if __name__ == "__main__":
+    main()

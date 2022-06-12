@@ -9,8 +9,6 @@ import pickle
 import math
 import os
 
-
-
 """
 utilites for geotiff files
 include building, saving loading lists of windows
@@ -171,7 +169,7 @@ def Fp_on_first(mx, lat):
     Fps = []
     for hr in range(24):
         day_hrs.append(
-            (datetime.datetime(2019, mx, 1, hr,) - st).total_seconds() / 3600
+            (datetime.datetime(2019, mx, 1, hr, ) - st).total_seconds() / 3600
         )
         Fps.append(Fp(day_hrs[hr], lat))
     Fps = np.array(Fps)
@@ -196,6 +194,8 @@ def Fp(t, lat):
 
 # get 12 month series of top of atmo power
 def toa_series(lat):
+    """  calc toa solar visible power for first of each month
+    to get 12 monthly averages"""
     firsts = []
     mos = []
     for mx in range(1, 13):
@@ -257,7 +257,7 @@ def addnote(fig, params):
 
 def mapper(x, y, z, cmp, name, nrm):
     fi, ax = plt.subplots(1)
-    fi.suptitle(name)  #'sensitivity map from test data 1 deg C mse'
+    fi.suptitle(name)  # 'sensitivity map from test data 1 deg C mse'
     fi.subplots_adjust(top=0.95, bottom=0.1, left=0.1, right=0.99)
     ax.scatter(x, y, c=z, s=1, cmap=cmp, norm=nrm)
     cax, _ = matplotlib.colorbar.make_axes(ax)
@@ -309,3 +309,5 @@ def build_winlist(NestLat, SestLat, res, nocols, hemirows):
         for lact in range(hemirows):
             windows.append(rio.windows.Window(loct * rw, eq_off + (lact * ch), rw, ch))
     return windows
+
+
