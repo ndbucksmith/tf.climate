@@ -1,3 +1,5 @@
+from operator import itemgetter
+
 import tensorflow as tf
 import wc_batcher as wcb
 import numpy as np
@@ -7,6 +9,7 @@ from keras.models import Model
 
 MODEL_TYPE = "LSTM"
 PRINT_12MO_STATS = True
+
 
 class KerasSeqLSTM():
     def __init__(self, params):
@@ -33,7 +36,8 @@ class KerasSeqLSTM():
         self.model.add(l1)
         # l2 = tf.keras.layers.Dense(20, name="monthly_expanded")
         # self.model.add(l2)
-        self.model.add(tf.keras.layers.LSTM(cell_size, go_backwards=False, stateful=True, batch_size=(120, 12, input_width)))
+        self.model.add(
+            tf.keras.layers.LSTM(cell_size, go_backwards=False, stateful=True, batch_size=(120, 12, input_width)))
         self.model.add(tf.keras.layers.Dense(12))
         # self.model.add_loss(tf.keras.losses.MeanSquaredError())
         self.model.build((None, 12, xin_size))
@@ -137,15 +141,25 @@ for _bx in range(500000):
 
     tb = zb.zbatch(batch_size, True)
     static_ins = np.take(tb[0], params["take"], axis=1)
-    # print(static_ins.shape)
-    rnn_ins = np.take(tb[1], [0, 1, 2, 3], axis=1)
+
+    rnn_ins = np.take(tb[1], [0, 1, 2, 3], axis=2)
     # print("rnn ins shape ", rnn_ins.shape)
     if MODEL_TYPE == 'LSTM':
         sfb = wcb.small_flat_batch(static_ins=static_ins, rnn_ins=rnn_ins)
-        sfb_res = sfb.reshape([batch_size, 12, input_width])
+        # lat_max = -20.0
+        # for ix in range(120):
+        #     for mx in range(12):
+        #         if sfb[ix][mx][4] > lat_max:
+        #             lat_max = sfb[ix][mx][4]
+        # print(lat_max)
         # print("batch trues shape ", len(tb[3]), tb[3][0].shape)
         trues = np.reshape(tb[3], [batch_size, 12])
-        x = sfb_res
+        x = np.array(sfb)
+        # for ix in range(120):
+        #     for mx in range(12):
+        #         if x[ix, mx, 4] > lat_max:
+        #             lat_max = x[ix, mx, 4]
+        # print(lat_max)
     else:
         sfb_3mo = []
         trues = []
@@ -169,32 +183,37 @@ for _bx in range(500000):
         l_max = -1
         i_max = -1
         j_max = -1
+        lat_at_lmax = -10.0
         greater_than_2ct = 0
         greater_than_4ct = 0
-        neg_losses = []
+        neg_losses = [];
         pos_losses = []
         for ix in range(len(trues)):
             for jx in range(len(trues[0])):
                 raw_loss = y_[ix, jx].numpy() - trues[ix, jx]
-                if raw_loss >= 0.0:
-                    pos_losses.append(raw_loss)
-                else:
-                    neg_losses.append(raw_loss)
+                if raw_loss >= 9.0:
+                    pos_losses.append([raw_loss, x[ix, jx, 4]])
+                elif raw_loss <= -9.0:
+                    neg_losses.append([raw_loss, x[ix, jx, 4]])
                 if l_max < abs(y_[ix, jx].numpy() - trues[ix, jx]):
                     l_max = abs(y_[ix, jx].numpy() - trues[ix, jx])
                     i_max = ix
                     j_max = jx
+                    lat_at_lmax = x[ix, jx, 4]
                 if abs(y_[ix, jx].numpy() - trues[ix, jx]) > 2.0:
                     greater_than_2ct += 1
                 if abs(y_[ix, jx].numpy() - trues[ix, jx]) > 4.0:
                     greater_than_4ct += 1
-        print(f"max loss {l_max} at batch {i_max} at month {j_max}")
-        pos_losses.sort()
-        neg_losses.sort()
-        print(f"max + loss {pos_losses[-1]} {pos_losses[-2]} {pos_losses[-3]}")
-        print(f"max - loss {neg_losses[0]} {neg_losses[1]} {neg_losses[2]}")
+        print(f"max loss {l_max} at batch {i_max} at month {j_max} at lattitude {lat_at_lmax}")
+        if len(pos_losses) < 6:
+            print("big + errors", pos_losses)
+        if len(neg_losses) < 6:
+            print("big - errors", neg_losses)
+        # pos_losses.sort(key=itemgetter(0))
+        # neg_losses.sort(key=itemgetter(0))
+        # print(f"max + loss {pos_losses[-1]} {pos_losses[-2]} {pos_losses[-3]}")
+        # print(f"max - loss {neg_losses[0]} {neg_losses[1]} {neg_losses[2]}")
         print(f"months with error > 2C {greater_than_2ct}")
         print(f"months with error > 4C {greater_than_4ct}")
-
 
 print(f"training time {time.time() - start_time} seconds for {_bx} train steps")

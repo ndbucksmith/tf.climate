@@ -551,7 +551,7 @@ class zbatch:
     def __init__(self, size, zd=eZdist):
         self.zd = np.array(zd)
         z_breaks = []
-        print(self.zd.sum())
+        # print("sum of zones fractions", self.zd.sum())
         for zval in zd:
             z_breaks.append(int(zval * size))
         # fix roundign errs
@@ -586,14 +586,16 @@ class zbatch:
             fix = batch_[bx][1]
             with open(zdirs[zx] + zfilis[zx][fix], "rb") as fi:
                 exD = pickle.load(fi)
-            ins = exD["ins"]
-            ins = ins / nn_norms
-            r_s = exD["r_s"]
-            to_div = []
+            ins_ = exD["ins"]
+            ins = ins_ / nn_norms
+            if ins[1] > 1:
+                print(ins[1], ins_[1])
+            r_s = np.array(exD["r_s"])
+            r_s_T = r_s.transpose()
+            r_s = []
             for mx in range(12):
-                to_div.append(rnn_norms)
-            to_div_rev = np.reshape(to_div, [7, 12])
-            r_s = np.array(r_s) / to_div_rev
+                r_s.append(r_s_T[mx] / rnn_norms)
+            r_s = np.array(r_s)
             t_12 = exD["t_12"]
             coord = exD["coords"]
             wc_t = exD["wc_t"]
@@ -665,29 +667,18 @@ def small_flat_batch(static_ins, rnn_ins):
      value each month.  Assumes static_ins are [batch, width]  and rnn_ins are [batch, 4, Month]
 
      """
-    appended_batch = np.array([])
+    appended_batch = []
     batch_size = len(static_ins)
     stat_width = len(static_ins[0])
     for bx in range(batch_size):
         new_arrs = []
         # for ix in range(4):
         to_append = []
+
         for mx in range(12):
-            to_append.append(static_ins[bx, :])
-        to_append = np.array(to_append)  # 12 by 4
-        # print(to_append)
-        # print(rnn_ins[bx].shape)
-        to_append_x = to_append.reshape([stat_width, 12])  # swap to 4 by 12
-        # scaled_ins = [rnn_ins[0][bx][:], rnn_ins[1][bx][:], rnn_ins[2][bx][:], rnn_ins[3][bx][:]]
-        new_arr = np.append(rnn_ins[bx], to_append_x, axis=0)  # now at 8 by 12
-        new_arrs.append(new_arr)
-        # print("new arr shape ", new_arr.shape)
-        # print(len(new_arrs), new_arrs[0].shape)
-        if bx == 0:
-            full_rnn_input_dataset = 1
-            appended_batch = np.array(new_arrs)
-        else:
-            appended_batch = np.append(appended_batch, new_arrs, axis=0)
+            el = np.append(rnn_ins[bx,mx], static_ins[bx])
+            new_arrs.append(el)
+        appended_batch.append(new_arrs)
     # print("appended batch shape", appended_batch.shape)
     return appended_batch
 
