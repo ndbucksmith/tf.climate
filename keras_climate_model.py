@@ -1,5 +1,6 @@
 from operator import itemgetter
-
+import sys
+import io
 import tensorflow as tf
 import wc_batcher as wcb
 import numpy as np
@@ -32,12 +33,14 @@ class KerasSeqLSTM():
         input_width = len(params['take']) + len(params['rnn_take'])
         # Add a LSTM layer with 128 internal units.
         # self.model.add(tf.keras.layers.LSTM(128))
-        l1 = tf.keras.layers.Dense(16, name="monthly_inputs", batch_input_shape=(120, 12, input_width))
+        l1 = tf.keras.layers.Dense(16, name="monthly_inputs", batch_input_shape=(120, 12, input_width),
+                                   kernel_initializer=tf.keras.initializers.VarianceScaling())
         self.model.add(l1)
         # l2 = tf.keras.layers.Dense(20, name="monthly_expanded")
         # self.model.add(l2)
         self.model.add(
             tf.keras.layers.LSTM(cell_size, go_backwards=False, stateful=True, batch_size=(120, 12, input_width)))
+                                 # kernel_initializer=tf.keras.initializers.VarianceScaling()))
         self.model.add(tf.keras.layers.Dense(12))
         # self.model.add_loss(tf.keras.losses.MeanSquaredError())
         self.model.build((None, 12, xin_size))
@@ -46,7 +49,16 @@ class KerasSeqLSTM():
             print("weight shape:", wt.shape)
         self.model.compute_loss = self.c_l
         self.model.optimizer.learning_rate = 0.1
-        print(self.model.summary())
+        old_stdout = sys.stdout
+        new_stdout = io.StringIO()
+        sys.stdout = new_stdout
+        self.model.summary()
+        m_s = new_stdout.getvalue()
+        sys.stdout = old_stdout
+        model_name = "kerasSeqLSTM"
+        fp = f"models/{model_name}.txt"
+        with open(fp, "w") as fo:
+            fo.write(m_s)
 
     def c_l(self, x=None, y=None, y_pred=None, sample_weight=None):
         h_ = self.model(x)
@@ -83,6 +95,7 @@ class Keras3moModel():
         self.model.compute_loss = self.c_l
         self.model.optimizer.learning_rate = 0.1
         print(self.model.optimizer.learning_rate)
+
 
     def c_l(self, x=None, y=None, y_pred=None, sample_weight=None):
         h_ = self.model(x)
@@ -136,7 +149,7 @@ print("learning rate:", h.model.optimizer.learning_rate)
 zb = wcb.zbatch(batch_size)
 start_time = time.time()
 input_width = len(params['take']) + len(params['rnn_take'])
-for _bx in range(500000):
+for _bx in range(20000):
     #  np.array(ins_bat), rnn_seqs, wc_trs, rnn_trus, d3_idx
 
     tb = zb.zbatch(batch_size, True)
@@ -217,3 +230,39 @@ for _bx in range(500000):
         print(f"months with error > 4C {greater_than_4ct}")
 
 print(f"training time {time.time() - start_time} seconds for {_bx} train steps")
+old_stdout = sys.stdout
+new_stdout = io.StringIO()
+sys.stdout = new_stdout
+h.model.summary()
+m_s = new_stdout.getvalue()
+sys.stdout = old_stdout
+model_name = "kerasSeqLSTM"
+fp = f"models/{model_name}.txt"
+with open(fp, "w") as fo:
+    fo.write(m_s)
+# fp = f"models/{model_name}_model.tfsm"
+# h.model.save(fp)
+x_do_x = []
+for bx in range(batch_size):
+    x_row = x[bx]
+    for mx in range(12):
+        x_row[mx,0] += 86.4/50000
+    x_do_x.append(x_row)
+x_do_x = np.array(x_do_x)
+y_do_x = h.model(x_do_x)
+print("Sensitivity to 1 watt/m2 visible")
+pos_sens = []; pos_sens_ct =0
+neg_sens = []; neg_sens_ct = 0
+for bx in range(batch_size):
+    for mx in range(12):
+        print(y_[bx,mx].numpy(), trues[bx,mx], y_do_x[bx,mx].numpy(),  (y_do_x[bx,mx]-y_[bx,mx]).numpy())
+        if (y_do_x[bx,mx]-y_[bx,mx]).numpy() > 0.0:
+            pos_sens_ct += 1
+            pos_sens.append((y_do_x[bx,mx]-y_[bx,mx]).numpy())
+        else:
+            neg_sens_ct += 1
+            neg_sens.append((y_do_x[bx,mx]-y_[bx,mx]).numpy())
+neg_sens = np.array(neg_sens)
+pos_sens = np.array(pos_sens)
+print(f"positive sensitivities mean {pos_sens.mean()} max {pos_sens.max()} median {np.median(pos_sens)} count {pos_sens_ct}")
+print(f"negative sensitivities mean {neg_sens.mean()} max {neg_sens.max()} median {np.median(neg_sens)} count {neg_sens_ct}")
