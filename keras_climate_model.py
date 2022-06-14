@@ -33,18 +33,19 @@ class KerasSeqLSTM():
         input_width = len(params['take']) + len(params['rnn_take'])
         # Add a LSTM layer with 128 internal units.
         # self.model.add(tf.keras.layers.LSTM(128))
-        l1 = tf.keras.layers.Dense(16, name="monthly_inputs", batch_input_shape=(120, 12, input_width),
-                                   kernel_initializer=tf.keras.initializers.VarianceScaling())
-        self.model.add(l1)
+
+        self.model.add(tf.keras.layers.Dense(16, name="monthly_inputs", batch_input_shape=(120, 12, input_width),
+                                   kernel_initializer=tf.keras.initializers.VarianceScaling()))
         # l2 = tf.keras.layers.Dense(20, name="monthly_expanded")
         # self.model.add(l2)
         self.model.add(
-            tf.keras.layers.LSTM(cell_size, go_backwards=False, stateful=True, batch_size=(120, 12, input_width)))
+            tf.keras.layers.LSTM(cell_size, go_backwards=False, stateful=True, name="LSTM_0",
+                                 batch_size=(120, 12,input_width)))
                                  # kernel_initializer=tf.keras.initializers.VarianceScaling()))
-        self.model.add(tf.keras.layers.Dense(12))
+        self.model.add(tf.keras.layers.Dense(12, name="monthly_outputs"))
         # self.model.add_loss(tf.keras.losses.MeanSquaredError())
         self.model.build((None, 12, xin_size))
-        self.model.compile(optimizer='adam', loss=tf.keras.losses.MeanSquaredError)
+        self.model.compile(optimizer='adam', loss=tf.keras.losses.MeanSquaredError())
         for wt in self.model.weights:
             print("weight shape:", wt.shape)
         self.model.compute_loss = self.c_l
@@ -159,27 +160,15 @@ for _bx in range(20000):
     # print("rnn ins shape ", rnn_ins.shape)
     if MODEL_TYPE == 'LSTM':
         sfb = wcb.small_flat_batch(static_ins=static_ins, rnn_ins=rnn_ins)
-        # lat_max = -20.0
-        # for ix in range(120):
-        #     for mx in range(12):
-        #         if sfb[ix][mx][4] > lat_max:
-        #             lat_max = sfb[ix][mx][4]
-        # print(lat_max)
-        # print("batch trues shape ", len(tb[3]), tb[3][0].shape)
         trues = np.reshape(tb[3], [batch_size, 12])
         x = np.array(sfb)
-        # for ix in range(120):
-        #     for mx in range(12):
-        #         if x[ix, mx, 4] > lat_max:
-        #             lat_max = x[ix, mx, 4]
-        # print(lat_max)
     else:
         sfb_3mo = []
         trues = []
         for bx in range(batch_size):
             for mx in range(12):
-                sfb_3mo.append([rnn_ins[bx, 0, mx], rnn_ins[bx, 0, mx - 1], rnn_ins[bx, 0, mx - 2],
-                                rnn_ins[bx, 2, mx], rnn_ins[bx, 2, mx - 1], rnn_ins[bx, 2, mx - 2],
+                sfb_3mo.append([rnn_ins[bx,mx, 0], rnn_ins[bx,mx-1, 0], rnn_ins[bx,mx-2, 0],
+                                rnn_ins[bx,mx, 2], rnn_ins[bx,mx-1, 2,], rnn_ins[bx,mx-2, 2],
                                 static_ins[bx, 0]])
                 trues.append(tb[3][bx][mx])
         x = np.array(sfb_3mo)
@@ -192,7 +181,7 @@ for _bx in range(20000):
         print(f"first weights {h.model.weights[0][0][0]} {h.model.weights[1][0]}")
         np_loss = h.losses.numpy()  # type np.ndarray
         print(f"loss {np_loss.mean()}   median {np.median(np_loss)}")
-        print(f"first points {y_[0, 0].numpy()}", trues[0, 0])
+        # print(f"first points {y_[0, 0].numpy()}", trues[0, 0])
         l_max = -1
         i_max = -1
         j_max = -1
@@ -201,6 +190,7 @@ for _bx in range(20000):
         greater_than_4ct = 0
         neg_losses = [];
         pos_losses = []
+        #loop through results to compile more data about error size and distribution
         for ix in range(len(trues)):
             for jx in range(len(trues[0])):
                 raw_loss = y_[ix, jx].numpy() - trues[ix, jx]
@@ -230,6 +220,7 @@ for _bx in range(20000):
         print(f"months with error > 4C {greater_than_4ct}")
 
 print(f"training time {time.time() - start_time} seconds for {_bx} train steps")
+# have to switch stdout to save model summary to file
 old_stdout = sys.stdout
 new_stdout = io.StringIO()
 sys.stdout = new_stdout
@@ -240,29 +231,39 @@ model_name = "kerasSeqLSTM"
 fp = f"models/{model_name}.txt"
 with open(fp, "w") as fo:
     fo.write(m_s)
-# fp = f"models/{model_name}_model.tfsm"
-# h.model.save(fp)
+# now save the trained model with two lines of code - thanks tensorflow!
+fp = f"models/{model_name}_model"
+h.model.save(fp)
+
+# do calculus for climate sensitivity
 x_do_x = []
 for bx in range(batch_size):
     x_row = x[bx]
     for mx in range(12):
-        x_row[mx,0] += 86.4/50000
+        x_row[mx,0] += 3.7 * 86.4/50000
     x_do_x.append(x_row)
 x_do_x = np.array(x_do_x)
 y_do_x = h.model(x_do_x)
 print("Sensitivity to 1 watt/m2 visible")
 pos_sens = []; pos_sens_ct =0
-neg_sens = []; neg_sens_ct = 0
+neg_sens = []; neg_sens_ct = 0; neg_lats =[]
 for bx in range(batch_size):
+    overall_sens = 0.0
     for mx in range(12):
-        print(y_[bx,mx].numpy(), trues[bx,mx], y_do_x[bx,mx].numpy(),  (y_do_x[bx,mx]-y_[bx,mx]).numpy())
+        # print(y_[bx,mx].numpy(), trues[bx,mx], y_do_x[bx,mx].numpy(),  (y_do_x[bx,mx]-y_[bx,mx]).numpy())
         if (y_do_x[bx,mx]-y_[bx,mx]).numpy() > 0.0:
             pos_sens_ct += 1
             pos_sens.append((y_do_x[bx,mx]-y_[bx,mx]).numpy())
         else:
             neg_sens_ct += 1
             neg_sens.append((y_do_x[bx,mx]-y_[bx,mx]).numpy())
+            neg_lats.append(x[bx,mx,4] * 90.0)
+        overall_sens += ((y_do_x[bx,mx]-y_[bx,mx]).numpy()) / 12.0
+    corr_oa_sens = overall_sens / (1-x[bx,0, 11])
+    print(f"latitude {x[bx,0,4]} sens 12 mo {overall_sens} albedo {x[bx,0, 11]} albedo corr sens {corr_oa_sens}")
 neg_sens = np.array(neg_sens)
 pos_sens = np.array(pos_sens)
+neg_lats = np.array(neg_lats)
 print(f"positive sensitivities mean {pos_sens.mean()} max {pos_sens.max()} median {np.median(pos_sens)} count {pos_sens_ct}")
 print(f"negative sensitivities mean {neg_sens.mean()} max {neg_sens.max()} median {np.median(neg_sens)} count {neg_sens_ct}")
+print(f"negative sensitivities latitudes mean {neg_lats.mean()} min {neg_lats.min()} max {neg_lats.max()} median {np.median(neg_lats)}")

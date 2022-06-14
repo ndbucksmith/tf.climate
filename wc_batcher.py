@@ -43,22 +43,22 @@ row3 ct 9 slice 14:23,
 Total annual features = 9+5+9 = 23
 Feature names capped at 4 characters to make charts display legibly.
 Here is more detail description of the features
-lon,  lat  coordinates of sample tile
-toa_  top of atmosphere annual average radiation in Trenberth units (24/7 w/m2)
-elev - average elevation in the tile
-barp - barometric pressure mmHg a pure function of elev
-s/t - annual surface solar as a fraction of toa. This number goes lowers as cloud refelction and greenhouse absoption increase
-pre_ annual average precipitation from 12 monthly in mm
-sra_ annual surface solar from 12 monthly in kJ/m2 day
-pre_ annual average wind from 12 monthly
-land, wat, ice, dsrt  - Fraction of tile that land, water, ice, bare
-alb albedo calculated from previous 4 fields
-sh, nh identifies hemisphere
-rast - std dev of surface radiation in tile
-elst - std dev of elevation in the tile
-sslp - north south slope of tile with sun facing positive, pole facing negative
-eslp - eastern slope of tile
-zs, gtzs, ltzs - fraction of land at sea level and below and above
+0 lon,  lat  coordinates of sample tile
+2 toa_  top of atmosphere annual average radiation in Trenberth units (24/7 w/m2)
+3 elev - average elevation in the tile
+4 barp - barometric pressure mmHg a pure function of elev
+5 s/t - annual surface solar as a fraction of toa. This number goes lowers as cloud refelction and greenhouse absoption increase
+6 pre_ annual average precipitation from 12 monthly in mm
+7 sra_ annual surface solar from 12 monthly in kJ/m2 day
+8 pre_ annual average wind from 12 monthly
+9,10,11,12 land, wat, ice, dsrt  - Fraction of tile that land, water, ice, bare
+13 alb albedo calculated from previous 4 fields
+14,15 sh, nh identifies hemisphere
+16 rast - std dev of surface radiation in tile
+17 elst - std dev of elevation in the tile
+18 sslp - north south slope of tile with sun facing positive, pole facing negative
+19 eslp - eastern slope of tile
+20,21,22 zs, gtzs, ltzs - fraction of land at sea level and below and above
 
 Monthly features are
 surface visble rad in kJm-2/day
